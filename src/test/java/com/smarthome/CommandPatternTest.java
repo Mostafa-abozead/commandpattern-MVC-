@@ -3,6 +3,8 @@ package com.smarthome;
 import com.smarthome.command.Command;
 import com.smarthome.command.LightOnCommand;
 import com.smarthome.command.LightOffCommand;
+import com.smarthome.command.GetStatusCommand;
+import com.smarthome.model.LightState;
 import com.smarthome.service.LightService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -11,12 +13,13 @@ import org.junit.jupiter.api.DisplayName;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Unit tests for the Command Pattern implementation.
+ * Unit tests for the Strict Command Pattern implementation.
  * 
  * These tests verify:
  * 1. LightService (Receiver) works correctly
- * 2. LightOnCommand and LightOffCommand execute properly
+ * 2. Commands return LightState (Model)
  * 3. Commands properly delegate to the LightService
+ * 4. Strict decoupling - Commands are the only way to access Receiver
  */
 class CommandPatternTest {
 
@@ -83,13 +86,14 @@ class CommandPatternTest {
     }
 
     @Test
-    @DisplayName("LightOnCommand execute should turn light ON via LightService")
-    void lightOnCommand_execute_shouldTurnLightOn() {
+    @DisplayName("LightOnCommand execute should return LightState with ON status")
+    void lightOnCommand_execute_shouldReturnLightStateOn() {
         Command command = new LightOnCommand(lightService);
         
-        String result = command.execute();
+        LightState result = command.execute();
         
-        assertEquals("Light is ON", result);
+        assertTrue(result.isOn());
+        assertEquals("Light is ON", result.getStatusMessage());
         assertTrue(lightService.isLightOn());
     }
 
@@ -105,33 +109,61 @@ class CommandPatternTest {
     }
 
     @Test
-    @DisplayName("LightOffCommand execute should turn light OFF via LightService")
-    void lightOffCommand_execute_shouldTurnLightOff() {
+    @DisplayName("LightOffCommand execute should return LightState with OFF status")
+    void lightOffCommand_execute_shouldReturnLightStateOff() {
         lightService.turnOn(); // First turn on
         Command command = new LightOffCommand(lightService);
         
-        String result = command.execute();
+        LightState result = command.execute();
         
-        assertEquals("Light is OFF", result);
+        assertFalse(result.isOn());
+        assertEquals("Light is OFF", result.getStatusMessage());
         assertFalse(lightService.isLightOn());
+    }
+
+    // ==================== GetStatusCommand Tests ====================
+
+    @Test
+    @DisplayName("GetStatusCommand should return current LightState")
+    void getStatusCommand_shouldReturnCurrentState() {
+        Command command = new GetStatusCommand(lightService);
+        
+        LightState result = command.execute();
+        
+        assertFalse(result.isOn());
+        assertEquals("Light is currently OFF", result.getStatusMessage());
+    }
+
+    @Test
+    @DisplayName("GetStatusCommand should return ON state after light is turned on")
+    void getStatusCommand_afterTurnOn_shouldReturnOnState() {
+        lightService.turnOn();
+        Command command = new GetStatusCommand(lightService);
+        
+        LightState result = command.execute();
+        
+        assertTrue(result.isOn());
+        assertEquals("Light is currently ON", result.getStatusMessage());
     }
 
     // ==================== Command Pattern Integration Tests ====================
 
     @Test
-    @DisplayName("Commands should properly delegate to the Receiver")
+    @DisplayName("Commands should properly delegate to the Receiver and return LightState")
     void commands_shouldDelegateToReceiver() {
         // Initial state
         assertFalse(lightService.isLightOn());
         
         // Turn on using command
         Command onCommand = new LightOnCommand(lightService);
-        onCommand.execute();
+        LightState onState = onCommand.execute();
+        assertTrue(onState.isOn());
         assertTrue(lightService.isLightOn());
         
         // Turn off using command
         Command offCommand = new LightOffCommand(lightService);
-        offCommand.execute();
+        LightState offState = offCommand.execute();
+        assertFalse(offState.isOn());
         assertFalse(lightService.isLightOn());
     }
 
@@ -142,16 +174,16 @@ class CommandPatternTest {
         Command offCommand = new LightOffCommand(lightService);
         
         // Execute on, off, on, off sequence
-        assertEquals("Light is ON", onCommand.execute());
-        assertTrue(lightService.isLightOn());
+        LightState state1 = onCommand.execute();
+        assertTrue(state1.isOn());
         
-        assertEquals("Light is OFF", offCommand.execute());
-        assertFalse(lightService.isLightOn());
+        LightState state2 = offCommand.execute();
+        assertFalse(state2.isOn());
         
-        assertEquals("Light is ON", onCommand.execute());
-        assertTrue(lightService.isLightOn());
+        LightState state3 = onCommand.execute();
+        assertTrue(state3.isOn());
         
-        assertEquals("Light is OFF", offCommand.execute());
-        assertFalse(lightService.isLightOn());
+        LightState state4 = offCommand.execute();
+        assertFalse(state4.isOn());
     }
 }

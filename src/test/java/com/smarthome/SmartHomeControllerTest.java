@@ -12,12 +12,13 @@ import org.springframework.test.web.servlet.MockMvc;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.hamcrest.Matchers.*;
 
 /**
- * Integration tests for the SmartHomeController.
+ * Integration tests for the SmartHomeController (REST API).
  * 
  * These tests verify that the REST endpoints work correctly
- * and properly delegate to the Command Pattern implementation.
+ * and properly delegate to the Strict Command Pattern implementation.
  */
 @WebMvcTest(SmartHomeController.class)
 class SmartHomeControllerTest {
@@ -29,48 +30,56 @@ class SmartHomeControllerTest {
     private LightService lightService;
 
     @Test
-    @DisplayName("GET /api/light/on should turn on the light and return correct message")
-    void turnLightOn_shouldReturnLightIsOn() throws Exception {
+    @DisplayName("GET /api/light/on should turn on the light and return LightState")
+    void turnLightOn_shouldReturnLightStateOn() throws Exception {
         when(lightService.turnOn()).thenReturn("Light is ON");
+        when(lightService.isLightOn()).thenReturn(true);
 
         mockMvc.perform(get("/api/light/on"))
                 .andExpect(status().isOk())
-                .andExpect(content().string("Light is ON"));
+                .andExpect(jsonPath("$.on", is(true)))
+                .andExpect(jsonPath("$.statusMessage", is("Light is ON")));
 
         verify(lightService, times(1)).turnOn();
     }
 
     @Test
-    @DisplayName("GET /api/light/off should turn off the light and return correct message")
-    void turnLightOff_shouldReturnLightIsOff() throws Exception {
+    @DisplayName("GET /api/light/off should turn off the light and return LightState")
+    void turnLightOff_shouldReturnLightStateOff() throws Exception {
         when(lightService.turnOff()).thenReturn("Light is OFF");
+        when(lightService.isLightOn()).thenReturn(false);
 
         mockMvc.perform(get("/api/light/off"))
                 .andExpect(status().isOk())
-                .andExpect(content().string("Light is OFF"));
+                .andExpect(jsonPath("$.on", is(false)))
+                .andExpect(jsonPath("$.statusMessage", is("Light is OFF")));
 
         verify(lightService, times(1)).turnOff();
     }
 
     @Test
-    @DisplayName("GET /api/light/status should return current light status")
-    void getLightStatus_shouldReturnCurrentStatus() throws Exception {
+    @DisplayName("GET /api/light/status should return current LightState")
+    void getLightStatus_shouldReturnCurrentLightState() throws Exception {
         when(lightService.getStatus()).thenReturn("Light is currently OFF");
+        when(lightService.isLightOn()).thenReturn(false);
 
         mockMvc.perform(get("/api/light/status"))
                 .andExpect(status().isOk())
-                .andExpect(content().string("Light is currently OFF"));
+                .andExpect(jsonPath("$.on", is(false)))
+                .andExpect(jsonPath("$.statusMessage", is("Light is currently OFF")));
 
         verify(lightService, times(1)).getStatus();
     }
 
     @Test
-    @DisplayName("GET /api/light/status when light is ON should return ON status")
-    void getLightStatus_whenOn_shouldReturnOnStatus() throws Exception {
+    @DisplayName("GET /api/light/status when light is ON should return ON state")
+    void getLightStatus_whenOn_shouldReturnOnState() throws Exception {
         when(lightService.getStatus()).thenReturn("Light is currently ON");
+        when(lightService.isLightOn()).thenReturn(true);
 
         mockMvc.perform(get("/api/light/status"))
                 .andExpect(status().isOk())
-                .andExpect(content().string("Light is currently ON"));
+                .andExpect(jsonPath("$.on", is(true)))
+                .andExpect(jsonPath("$.statusMessage", is("Light is currently ON")));
     }
 }

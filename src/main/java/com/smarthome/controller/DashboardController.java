@@ -3,6 +3,7 @@ package com.smarthome.controller;
 import com.smarthome.command.Command;
 import com.smarthome.command.LightOnCommand;
 import com.smarthome.command.LightOffCommand;
+import com.smarthome.command.GetStatusCommand;
 import com.smarthome.model.LightState;
 import com.smarthome.service.LightService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,139 +12,148 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 
 /**
- * DashboardController - The Controller in Strict MVC Architecture (also Invoker in Command Pattern).
+ * DashboardController - The Invoker in the Strict Command Design Pattern.
  * 
- * This controller demonstrates the classic Spring MVC pattern:
- * 1. Receives HTTP request from the User
- * 2. Creates and executes Command (Command Pattern)
- * 3. Updates the Model with data (MVC Model)
- * 4. Returns the View name (MVC View)
+ * STRICT COMMAND PATTERN IMPLEMENTATION:
+ * - The Controller holds a reference to Command (Aggregation relationship)
+ * - The Controller has NO direct dependency on the Receiver (LightService)
+ * - All communication with the Receiver happens ONLY through Commands
  * 
- * KEY ANNOTATIONS:
- * - @Controller (NOT @RestController): Returns View names, not raw data
- * - Methods receive Spring's Model to pass data to the View
+ * MVC ARCHITECTURE:
+ * - @Controller annotation (NOT @RestController)
+ * - Returns View names, not raw data
+ * - Uses Spring's Model to pass data to the View
  * 
  * DECOUPLING BENEFITS:
- * - Controller doesn't know HOW to turn on/off the light (Command Pattern)
- * - Controller doesn't know HOW the View renders the data (MVC)
- * - Model (LightState) is a simple data carrier between Controller and View
+ * - Controller doesn't know HOW to control the light
+ * - Controller doesn't know about LightService at all
+ * - All it knows is the Command interface
  */
 @Controller
 public class DashboardController {
 
     /**
-     * The Receiver service - injected via Spring's dependency injection.
-     * The Controller holds a reference to the Receiver to pass to Commands.
+     * Command reference - The Controller (Invoker) holds a reference to Command.
+     * This demonstrates the Aggregation relationship between Invoker and Command.
+     * The Controller communicates ONLY via this Command interface.
      */
-    private final LightService lightService;
+    private Command command;
 
     /**
-     * Constructor-based dependency injection for the LightService.
+     * Pre-configured commands injected via Spring DI.
+     * These are ready to use - Controller just assigns them and calls execute().
+     */
+    private final Command lightOnCommand;
+    private final Command lightOffCommand;
+    private final Command getStatusCommand;
+
+    /**
+     * Constructor-based dependency injection.
+     * Commands are created with the Receiver (LightService) internally.
+     * The Controller NEVER sees or interacts with LightService directly.
      * 
-     * @param lightService The Receiver service that will be passed to commands
+     * @param lightService Injected by Spring, passed to Commands only
      */
     @Autowired
     public DashboardController(LightService lightService) {
-        this.lightService = lightService;
+        // Commands are created with the Receiver - Controller doesn't use it directly
+        this.lightOnCommand = new LightOnCommand(lightService);
+        this.lightOffCommand = new LightOffCommand(lightService);
+        this.getStatusCommand = new GetStatusCommand(lightService);
     }
 
     /**
      * Displays the Smart Home Dashboard.
      * 
-     * MVC Flow:
+     * STRICT COMMAND PATTERN FLOW:
      * 1. User navigates to /dashboard
-     * 2. Controller gets current light state from Service
-     * 3. Controller creates LightState Model with current data
-     * 4. Controller adds Model to Spring's Model
-     * 5. Controller returns "dashboard" (View name)
-     * 6. Thymeleaf renders dashboard.html with the Model data
+     * 2. Controller sets command = getStatusCommand
+     * 3. Controller calls command.execute()
+     * 4. Command returns LightState (Model)
+     * 5. Controller adds Model to Spring's Model
+     * 6. Controller returns "dashboard" (View name)
+     * 
+     * NOTE: Controller NEVER accesses LightService - only uses Command
      * 
      * @param model Spring's Model to pass data to the View
      * @return The view name "dashboard"
      */
     @GetMapping("/dashboard")
     public String showDashboard(Model model) {
-        // Get current state from service
-        boolean isOn = lightService.isLightOn();
-        String status = lightService.getStatus();
+        // Set the command (Aggregation - Invoker holds reference to Command)
+        this.command = getStatusCommand;
         
-        // Create the Model (LightState) with current data
-        LightState lightState = new LightState(isOn, status);
+        // Execute command - returns LightState (Model)
+        LightState lightState = command.execute();
         
         // Add Model to Spring's Model for the View
         model.addAttribute("lightState", lightState);
         
-        // Return View name - Thymeleaf will render dashboard.html
+        // Return View name
         return "dashboard";
     }
 
     /**
      * Turns ON the light and returns to dashboard.
      * 
-     * Complete MVC + Command Pattern Flow:
-     * 1. User clicks "Turn ON" button on View (dashboard.html)
-     * 2. Request goes to Controller (/light/on)
-     * 3. Controller creates LightOnCommand with Receiver (Command Pattern)
-     * 4. Controller executes Command
-     * 5. Command delegates to LightService.turnOn() (Receiver)
-     * 6. Controller updates Model (LightState) with new state
-     * 7. Controller returns "dashboard" (View name)
-     * 8. View displays updated light status
+     * STRICT COMMAND PATTERN FLOW:
+     * 1. User clicks "Turn ON" button on View
+     * 2. Controller sets command = lightOnCommand
+     * 3. Controller calls command.execute()
+     * 4. Command delegates to Receiver (internally)
+     * 5. Command returns LightState (Model)
+     * 6. Controller returns "dashboard" (View name)
      * 
-     * DECOUPLING: The controller doesn't know HOW to turn on the light,
-     * only the Command and Service know that.
+     * STRICT DECOUPLING: Controller doesn't know about LightService,
+     * doesn't know HOW to turn on the light - only Command knows.
      * 
      * @param model Spring's Model to pass data to the View
      * @return The view name "dashboard"
      */
     @GetMapping("/light/on")
     public String turnLightOn(Model model) {
-        // Create the concrete command with the receiver (Command Pattern)
-        Command command = new LightOnCommand(lightService);
+        // Set the command (Aggregation - Invoker holds reference to Command)
+        this.command = lightOnCommand;
         
-        // Execute the command - the Invoker doesn't know the implementation details
-        String result = command.execute();
+        // Execute command - returns LightState (Model)
+        LightState lightState = command.execute();
         
-        // Update the Model with new state
-        LightState lightState = new LightState(lightService.isLightOn(), result);
+        // Add Model to Spring's Model for the View
         model.addAttribute("lightState", lightState);
         
-        // Return View name - completes the MVC cycle
+        // Return View name
         return "dashboard";
     }
 
     /**
      * Turns OFF the light and returns to dashboard.
      * 
-     * Complete MVC + Command Pattern Flow:
-     * 1. User clicks "Turn OFF" button on View (dashboard.html)
-     * 2. Request goes to Controller (/light/off)
-     * 3. Controller creates LightOffCommand with Receiver (Command Pattern)
-     * 4. Controller executes Command
-     * 5. Command delegates to LightService.turnOff() (Receiver)
-     * 6. Controller updates Model (LightState) with new state
-     * 7. Controller returns "dashboard" (View name)
-     * 8. View displays updated light status
+     * STRICT COMMAND PATTERN FLOW:
+     * 1. User clicks "Turn OFF" button on View
+     * 2. Controller sets command = lightOffCommand
+     * 3. Controller calls command.execute()
+     * 4. Command delegates to Receiver (internally)
+     * 5. Command returns LightState (Model)
+     * 6. Controller returns "dashboard" (View name)
      * 
-     * DECOUPLING: The controller doesn't know HOW to turn off the light,
-     * only the Command and Service know that.
+     * STRICT DECOUPLING: Controller doesn't know about LightService,
+     * doesn't know HOW to turn off the light - only Command knows.
      * 
      * @param model Spring's Model to pass data to the View
      * @return The view name "dashboard"
      */
     @GetMapping("/light/off")
     public String turnLightOff(Model model) {
-        // Create the concrete command with the receiver (Command Pattern)
-        Command command = new LightOffCommand(lightService);
+        // Set the command (Aggregation - Invoker holds reference to Command)
+        this.command = lightOffCommand;
         
-        // Execute the command - the Invoker doesn't know the implementation details
-        String result = command.execute();
+        // Execute command - returns LightState (Model)
+        LightState lightState = command.execute();
         
-        // Update the Model with new state
-        LightState lightState = new LightState(lightService.isLightOn(), result);
+        // Add Model to Spring's Model for the View
         model.addAttribute("lightState", lightState);
         
-        // Return View name - completes the MVC cycle
+        // Return View name
         return "dashboard";
     }
 }

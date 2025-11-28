@@ -1,69 +1,76 @@
-# Smart Home Automation - Command Design Pattern with Strict MVC
+# Smart Home Automation - Strict Command Design Pattern with MVC
 
 ## 1. Conceptual Mapping
 
 ### Architecture Overview
 
-This implementation demonstrates a **Strict Model-View-Controller (MVC)** architecture integrated with the **Command Design Pattern**.
+This implementation demonstrates a **Strict Command Design Pattern** integrated with **Model-View-Controller (MVC)** architecture.
+
+### Key Constraints (Strict Command Pattern)
+
+1. **Invoker-Command Aggregation**: The Controller (Invoker) holds a `private Command command;` reference.
+2. **Strict Decoupling**: The Controller has **NO direct reference** to the Receiver (LightService). It communicates **ONLY via the Command interface**.
+3. **Clean Diagram**: No direct relationship between View and Model class - Controller handles all data flow.
 
 ### MVC Components
 
 | MVC Layer | Implementation | Description |
 |-----------|----------------|-------------|
-| **View** | `dashboard.html` | Thymeleaf template that displays the Smart Home Dashboard. Shows light status and provides control buttons. |
-| **Controller** | `DashboardController` | Receives requests, creates/executes Commands, updates Model, and returns View name. Uses `@Controller` annotation. |
-| **Model** | `LightState` | Simple POJO that carries data (light status) from Controller to View. |
+| **View** | `dashboard.html` | Thymeleaf template that displays the Smart Home Dashboard. |
+| **Controller** | `DashboardController` | Invoker - holds Command reference, executes commands, returns View name. |
+| **Model** | `LightState` | POJO that carries data from Controller to View. |
 
 ### Command Pattern Participants
 
 | Pattern Role | Implementation | Description |
 |--------------|----------------|-------------|
-| **Invoker** | `DashboardController` | Creates Command objects and calls `execute()` without knowing implementation details. |
-| **Receiver** | `LightService` | Contains the actual business/hardware logic for controlling the smart light bulb. |
-| **Command Interface** | `Command` | Interface that declares the `execute()` method contract. |
-| **Concrete Commands** | `LightOnCommand`, `LightOffCommand` | Encapsulate specific actions and delegate to the Receiver. |
+| **Invoker** | `DashboardController` | Holds `private Command command;` and calls `execute()`. Has NO reference to Receiver. |
+| **Command Interface** | `Command` | Declares `execute()` method returning `LightState`. |
+| **Concrete Commands** | `LightOnCommand`, `LightOffCommand`, `GetStatusCommand` | Hold reference to Receiver, encapsulate actions. |
+| **Receiver** | `LightService` | Contains actual hardware logic. Only Commands access it. |
 
-### Complete MVC + Command Pattern Flow
+### Strict Decoupling Flow
 
 ```
-User → View (dashboard.html) → Controller → Command → Service (Receiver) → Update Model → Return View → User
+Controller (Invoker) → Command Interface → Concrete Command → LightService (Receiver)
+                              ↓
+                         LightState (Model)
+                              ↓
+                        View (dashboard.html)
 ```
 
-### Key Benefits
-
-1. **MVC Separation**: View only knows about Model data, not about Services or Commands.
-2. **Command Decoupling**: Controller doesn't know HOW to control the light, only Commands know.
-3. **Single Responsibility**: Each layer has one job.
-4. **Testability**: Each component can be tested independently.
+**Note**: Controller NEVER accesses LightService directly - only through Commands.
 
 ---
 
-## 2. PlantUML Class Diagram
+## 2. PlantUML Class Diagram (Strict Compliance)
 
 ```plantuml
 @startuml
 skinparam shadowing false
 skinparam monochrome true
 
-title Smart Home Dashboard - Class Diagram\n(Strict MVC Architecture + Command Design Pattern)
+title Smart Home Dashboard - Strict Command Pattern Class Diagram
 
 ' ========================================
-' View Layer (MVC)
+' View Layer
 ' ========================================
 package "View Layer" #LightBlue {
     class "dashboard.html" <<View>> <<Thymeleaf>> {
         Displays light status
         Shows ON/OFF buttons
-        Renders LightState data
     }
 }
 
 ' ========================================
-' Controller Layer (MVC + Invoker)
+' Controller Layer (Invoker)
 ' ========================================
 package "Controller Layer" #LightGray {
     class DashboardController <<Invoker>> <<@Controller>> {
-        -lightService: LightService
+        -command: Command
+        -lightOnCommand: Command
+        -lightOffCommand: Command
+        -getStatusCommand: Command
         +showDashboard(model: Model): String
         +turnLightOn(model: Model): String
         +turnLightOff(model: Model): String
@@ -71,37 +78,38 @@ package "Controller Layer" #LightGray {
 }
 
 ' ========================================
-' Model Layer (MVC)
+' Model Layer
 ' ========================================
 package "Model Layer" #LightGreen {
     class LightState <<Model>> <<POJO>> {
         -on: boolean
         -statusMessage: String
         +isOn(): boolean
-        +setOn(on: boolean): void
         +getStatusMessage(): String
-        +setStatusMessage(msg: String): void
     }
 }
 
 ' ========================================
-' Command Pattern Layer
+' Command Pattern
 ' ========================================
 package "Command Pattern" #White {
     interface Command <<Command Interface>> {
-        +execute(): String
+        +execute(): LightState
     }
     
     class LightOnCommand <<Concrete Command>> {
         -lightService: LightService
-        +LightOnCommand(lightService: LightService)
-        +execute(): String
+        +execute(): LightState
     }
     
     class LightOffCommand <<Concrete Command>> {
         -lightService: LightService
-        +LightOffCommand(lightService: LightService)
-        +execute(): String
+        +execute(): LightState
+    }
+    
+    class GetStatusCommand <<Concrete Command>> {
+        -lightService: LightService
+        +execute(): LightState
     }
 }
 
@@ -119,46 +127,64 @@ package "Service Layer" #LightYellow {
 }
 
 ' ========================================
-' Relationships
+' Relationships (Strict Compliance)
 ' ========================================
 
-' View-Controller
+' Invoker-Command Aggregation (Controller holds Command reference)
+DashboardController o-- Command : aggregation\n(private command)
+
+' Controller-Model (Controller creates Model)
+DashboardController --> LightState : creates
+
+' Controller-View (Controller returns view name)
+DashboardController ..> "dashboard.html" : returns "dashboard"
+
+' View requests to Controller
 "dashboard.html" ..> DashboardController : HTTP Request
-DashboardController ..> "dashboard.html" : returns view name
-
-' Controller-Model
-DashboardController --> LightState : creates & populates
-
-' View-Model
-"dashboard.html" ..> LightState : displays data
-
-' Controller-Command
-DashboardController ..> Command : creates & executes
 
 ' Command hierarchy
 LightOnCommand ..|> Command : implements
 LightOffCommand ..|> Command : implements
+GetStatusCommand ..|> Command : implements
 
-' Command-Service
-LightOnCommand --> LightService : delegates to
-LightOffCommand --> LightService : delegates to
+' Commands return Model
+Command ..> LightState : returns
 
-' Controller-Service (for dependency injection)
-DashboardController --> LightService : @Autowired
+' Commands use Receiver (ONLY Commands access LightService)
+LightOnCommand --> LightService : uses
+LightOffCommand --> LightService : uses
+GetStatusCommand --> LightService : uses
+
+' ========================================
+' Notes for Strict Compliance
+' ========================================
+note right of DashboardController
+  **STRICT DECOUPLING**
+  - Holds Command reference (Aggregation)
+  - NO direct reference to LightService
+  - Communicates ONLY via Command interface
+end note
+
+note bottom of Command
+  **Command returns LightState**
+  Controller gets Model from Command,
+  never touches the Receiver
+end note
 
 ' ========================================
 ' Legend
 ' ========================================
 legend right
   |= Stereotype |= Description |
-  | <<View>> | HTML template (Thymeleaf) |
-  | <<@Controller>> | Spring MVC Controller |
+  | <<Invoker>> | Holds Command, calls execute() |
+  | <<Command Interface>> | Declares execute(): LightState |
+  | <<Concrete Command>> | Holds Receiver reference |
+  | <<Receiver>> | Actual hardware logic |
   | <<Model>> | Data carrier POJO |
-  | <<Invoker>> | Creates & executes Commands |
-  | <<Command Interface>> | Declares execute() |
-  | <<Concrete Command>> | Encapsulates action |
-  | <<Receiver>> | Performs actual work |
-  | <<@Service>> | Spring Service bean |
+  | <<View>> | HTML template |
+  
+  **KEY: No arrow between View and Model**
+  **KEY: No arrow from Controller to LightService**
 endlegend
 
 @enduml
@@ -166,17 +192,17 @@ endlegend
 
 ---
 
-## 3. PlantUML Sequence Diagram
+## 3. PlantUML Sequence Diagram (Strict MVC Cycle)
 
 ```plantuml
 @startuml
 skinparam shadowing false
 skinparam monochrome true
 
-title Turn On Light - Complete MVC + Command Pattern Flow
+title Turn On Light - Strict Command Pattern + MVC Flow
 
 ' ========================================
-' Participants grouped by Layer
+' Participants
 ' ========================================
 actor "User" as user
 
@@ -189,11 +215,12 @@ box "Controller Layer" #LightGray
 end box
 
 box "Command Pattern" #White
+    participant "Command\n<<Interface>>" as commandInterface
     participant "LightOnCommand\n<<Concrete Command>>" as command
 end box
 
 box "Service Layer" #LightYellow
-    participant "LightService\n<<Receiver>>\n<<@Service>>" as service
+    participant "LightService\n<<Receiver>>" as service
 end box
 
 box "Model Layer" #LightGreen
@@ -201,10 +228,10 @@ box "Model Layer" #LightGreen
 end box
 
 ' ========================================
-' Sequence Flow - Complete MVC Cycle
+' Sequence Flow
 ' ========================================
 
-== User Interaction ==
+== User clicks button on View ==
 user -> view : Click "Turn ON" button
 activate view
 
@@ -212,66 +239,56 @@ view -> controller : GET /light/on
 activate controller
 deactivate view
 
-== Command Pattern Execution ==
+== Controller sets Command (Aggregation) ==
 note right of controller
-  **Step 1: Invoker receives request**
-  Controller does NOT know HOW
-  to turn on the light
+  **STRICT: Controller holds Command**
+  this.command = lightOnCommand
+  (NO reference to LightService)
 end note
 
-controller -> command ** : new LightOnCommand(lightService)
+controller -> controller : this.command = lightOnCommand
 
-note right of command
-  **Step 2: Create Command**
-  Command holds reference to Receiver
-end note
+== Controller executes Command ==
+controller -> commandInterface : command.execute()
+activate commandInterface
 
-controller -> command : execute()
+commandInterface -> command : execute()
 activate command
+
+== Command delegates to Receiver ==
+note right of command
+  **ONLY Command accesses Receiver**
+  Controller never touches LightService
+end note
 
 command -> service : turnOn()
 activate service
 
-note right of service
-  **Step 3: Receiver performs action**
-  Actual hardware logic here
-end note
-
 service --> command : "Light is ON"
 deactivate service
 
-command --> controller : "Light is ON"
+== Command creates and returns Model ==
+command -> model ** : new LightState(true, "Light is ON")
+
+command --> commandInterface : LightState
 deactivate command
 
-== Model Update ==
-controller -> model ** : new LightState(true, "Light is ON")
+commandInterface --> controller : LightState
+deactivate commandInterface
 
-note right of model
-  **Step 4: Update Model**
-  Model carries data to View
+== Controller adds Model and returns View ==
+note right of controller
+  **Controller receives Model from Command**
+  Never accesses Receiver directly
 end note
 
 controller -> controller : model.addAttribute("lightState", lightState)
-
-== Return View ==
-note right of controller
-  **Step 5: Return View name**
-  Controller returns "dashboard"
-end note
 
 controller --> view : return "dashboard"
 activate view
 deactivate controller
 
-== View Rendering ==
-view -> model : Read lightState.on
-view -> model : Read lightState.statusMessage
-
-note right of view
-  **Step 6: Render View**
-  Thymeleaf displays Model data
-end note
-
+== View renders with Model data ==
 view --> user : Display updated dashboard
 deactivate view
 
@@ -285,63 +302,78 @@ deactivate view
 ### File Structure
 ```
 src/main/java/com/smarthome/
-├── SmartHomeApplication.java      # Main application entry point
+├── SmartHomeApplication.java
 ├── command/
-│   ├── Command.java               # Command interface
-│   ├── LightOnCommand.java        # Concrete command to turn ON
-│   └── LightOffCommand.java       # Concrete command to turn OFF
+│   ├── Command.java               # Interface: execute() returns LightState
+│   ├── LightOnCommand.java        # Concrete: holds LightService
+│   ├── LightOffCommand.java       # Concrete: holds LightService
+│   └── GetStatusCommand.java      # Concrete: holds LightService
 ├── controller/
-│   ├── DashboardController.java   # MVC Controller (Invoker) - uses @Controller
-│   └── SmartHomeController.java   # REST Controller (for API access)
+│   └── DashboardController.java   # Invoker: holds Command, NO LightService reference
 ├── model/
-│   └── LightState.java            # Model POJO for View data
+│   └── LightState.java            # POJO: carries data to View
 └── service/
-    └── LightService.java          # Light service (Receiver)
+    └── LightService.java          # Receiver: actual hardware logic
 
-src/main/resources/
-└── templates/
-    └── dashboard.html             # Thymeleaf View template
+src/main/resources/templates/
+└── dashboard.html                 # View: displays data
 ```
 
-### How to Run
+### Key Implementation Details
 
-1. **Build the application:**
-   ```bash
-   mvn clean install
-   ```
+**DashboardController (Invoker):**
+```java
+@Controller
+public class DashboardController {
+    // STRICT: Holds Command reference (Aggregation)
+    private Command command;
+    
+    // Pre-configured commands
+    private final Command lightOnCommand;
+    private final Command lightOffCommand;
+    private final Command getStatusCommand;
+    
+    // NO direct reference to LightService in methods!
+    
+    @GetMapping("/light/on")
+    public String turnLightOn(Model model) {
+        this.command = lightOnCommand;        // Set command
+        LightState lightState = command.execute();  // Execute
+        model.addAttribute("lightState", lightState);
+        return "dashboard";
+    }
+}
+```
 
-2. **Run the application:**
-   ```bash
-   mvn spring-boot:run
-   ```
+**Command Interface:**
+```java
+public interface Command {
+    LightState execute();  // Returns Model, not String
+}
+```
 
-3. **Access the Dashboard:**
-   - Open browser: `http://localhost:8080/dashboard`
-   - Click "Turn ON" or "Turn OFF" buttons
-
-4. **Alternative REST API:**
-   - Turn ON: `curl http://localhost:8080/light/on`
-   - Turn OFF: `curl http://localhost:8080/light/off`
-   - Status: `curl http://localhost:8080/light/status`
+**Concrete Command:**
+```java
+public class LightOnCommand implements Command {
+    private final LightService lightService;  // Only Commands hold Receiver
+    
+    @Override
+    public LightState execute() {
+        String result = lightService.turnOn();
+        return new LightState(lightService.isLightOn(), result);
+    }
+}
+```
 
 ---
 
-## Summary
+## Summary - Strict Compliance
 
-This implementation demonstrates a **Strict MVC Architecture** integrated with the **Command Design Pattern**:
+| Requirement | Implementation |
+|-------------|----------------|
+| **Invoker-Command Aggregation** | `DashboardController` has `private Command command;` field |
+| **Strict Decoupling** | Controller has NO reference to `LightService` - only Commands do |
+| **No View-Model direct arrow** | Controller handles all data flow between View and Model |
+| **Command returns Model** | `execute()` returns `LightState`, not `String` |
 
-| Layer | Component | Role |
-|-------|-----------|------|
-| **View** | `dashboard.html` | Displays UI, shows Model data |
-| **Controller** | `DashboardController` | Receives requests, executes Commands, updates Model, returns View |
-| **Model** | `LightState` | Data carrier POJO between Controller and View |
-| **Command** | `Command`, `LightOnCommand`, `LightOffCommand` | Encapsulates actions, provides decoupling |
-| **Service** | `LightService` | Receiver - performs actual hardware logic |
-
-The complete flow is: **View → Controller → Command → Service → Update Model → Return View**
-
-This architecture provides:
-- **Clear separation** between UI (View), logic (Controller/Command), and data (Model)
-- **Decoupling** via Command Pattern - Controller doesn't know HOW to control the light
-- **Testability** - each component can be tested independently
-- **Maintainability** - changes in one layer don't affect others
+This architecture ensures the Controller (Invoker) is completely decoupled from the Receiver (LightService) and communicates **ONLY through the Command interface**.
