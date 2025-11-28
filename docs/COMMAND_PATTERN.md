@@ -28,66 +28,78 @@
 skinparam shadowing false
 skinparam monochrome true
 
-' Command Interface
-interface Command {
-    +execute(): String
+title Smart Home Command Pattern - Class Diagram\n(MVC Architecture + Command Pattern)
+
+' ========================================
+' Controller Layer (MVC)
+' ========================================
+package "Controller Layer" #LightGray {
+    class SmartHomeController <<Invoker>> <<@RestController>> {
+        -lightService: LightService
+        +turnLightOn(): String
+        +turnLightOff(): String
+        +getLightStatus(): String
+    }
 }
 
-' Concrete Commands
-class LightOnCommand {
-    -lightService: LightService
-    +LightOnCommand(lightService: LightService)
-    +execute(): String
+' ========================================
+' Command Layer (Command Pattern)
+' ========================================
+package "Command Layer" #White {
+    interface Command <<Command Interface>> {
+        +execute(): String
+    }
+    
+    class LightOnCommand <<Concrete Command>> {
+        -lightService: LightService
+        +LightOnCommand(lightService: LightService)
+        +execute(): String
+    }
+    
+    class LightOffCommand <<Concrete Command>> {
+        -lightService: LightService
+        +LightOffCommand(lightService: LightService)
+        +execute(): String
+    }
 }
 
-class LightOffCommand {
-    -lightService: LightService
-    +LightOffCommand(lightService: LightService)
-    +execute(): String
+' ========================================
+' Service Layer (MVC)
+' ========================================
+package "Service Layer" #LightGray {
+    class LightService <<Receiver>> <<@Service>> {
+        -isOn: boolean
+        +turnOn(): String
+        +turnOff(): String
+        +isLightOn(): boolean
+        +getStatus(): String
+    }
 }
 
-' Receiver
-class LightService {
-    -isOn: boolean
-    +turnOn(): String
-    +turnOff(): String
-    +isLightOn(): boolean
-    +getStatus(): String
-}
-
-' Invoker
-class SmartHomeController {
-    -lightService: LightService
-    +turnLightOn(): String
-    +turnLightOff(): String
-    +getLightStatus(): String
-}
-
+' ========================================
 ' Relationships
+' ========================================
 LightOnCommand ..|> Command : implements
 LightOffCommand ..|> Command : implements
 
-LightOnCommand --> LightService : uses
-LightOffCommand --> LightService : uses
+LightOnCommand --> LightService : delegates to
+LightOffCommand --> LightService : delegates to
 
-SmartHomeController ..> Command : creates
-SmartHomeController --> LightService : has dependency
+SmartHomeController ..> Command : creates & executes
+SmartHomeController --> LightService : injects (for commands)
 
-note right of SmartHomeController
-  **Invoker**
-  Creates commands and calls execute()
-  Does NOT know implementation details
-end note
-
-note right of LightService
-  **Receiver**
-  Contains actual hardware logic
-end note
-
-note right of Command
-  **Command Interface**
-  Defines execute() contract
-end note
+' ========================================
+' Legend
+' ========================================
+legend right
+  |= Stereotype |= Description |
+  | <<Invoker>> | Creates commands, calls execute() |
+  | <<Command Interface>> | Declares execute() contract |
+  | <<Concrete Command>> | Encapsulates action |
+  | <<Receiver>> | Performs actual work |
+  | <<@RestController>> | Spring MVC annotation |
+  | <<@Service>> | Spring Service annotation |
+endlegend
 
 @enduml
 ```
@@ -101,25 +113,59 @@ end note
 skinparam shadowing false
 skinparam monochrome true
 
-actor User as user
-participant "SmartHomeController\n(Invoker)" as controller
-participant "LightOnCommand\n(Concrete Command)" as command
-participant "LightService\n(Receiver)" as service
+title Turn On Light - Command Pattern Flow\n(MVC + Command Pattern Interaction)
 
-title Turn On Light - Command Pattern Flow
+' ========================================
+' Participants with Stereotypes
+' ========================================
+actor "User\n(Client)" as user
+box "Controller Layer" #LightGray
+    participant "SmartHomeController\n<<Invoker>>\n<<@RestController>>" as controller
+end box
+box "Command Layer" #White
+    participant "LightOnCommand\n<<Concrete Command>>" as command
+end box
+box "Service Layer" #LightGray
+    participant "LightService\n<<Receiver>>\n<<@Service>>" as service
+end box
 
+' ========================================
+' Sequence Flow
+' ========================================
 user -> controller : GET /light/on
 activate controller
 
+note right of controller
+  **Step 1: Invoker receives request**
+  Controller does NOT know how
+  to turn on the light
+end note
+
 controller -> command ** : new LightOnCommand(lightService)
-note right: Controller creates the command\nwith the receiver as dependency
+
+note right of command
+  **Step 2: Create Command**
+  Command is created with
+  Receiver as dependency
+end note
 
 controller -> command : execute()
 activate command
 
+note right of command
+  **Step 3: Execute Command**
+  Command knows WHAT to do,
+  delegates HOW to Receiver
+end note
+
 command -> service : turnOn()
 activate service
-note right: Command delegates\nto the Receiver
+
+note right of service
+  **Step 4: Receiver performs action**
+  Actual hardware logic
+  is encapsulated here
+end note
 
 service --> command : "Light is ON"
 deactivate service
