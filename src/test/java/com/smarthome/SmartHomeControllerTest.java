@@ -29,11 +29,11 @@ class SmartHomeControllerTest {
     private LightService lightService;
 
     @Test
-    @DisplayName("GET /light/on should turn on the light and return correct message")
+    @DisplayName("GET /api/light/on should turn on the light and return correct message")
     void turnLightOn_shouldReturnLightIsOn() throws Exception {
         when(lightService.turnOn()).thenReturn("Light is ON");
 
-        mockMvc.perform(get("/light/on"))
+        mockMvc.perform(get("/api/light/on"))
                 .andExpect(status().isOk())
                 .andExpect(content().string("Light is ON"));
 
@@ -41,11 +41,11 @@ class SmartHomeControllerTest {
     }
 
     @Test
-    @DisplayName("GET /light/off should turn off the light and return correct message")
+    @DisplayName("GET /api/light/off should turn off the light and return correct message")
     void turnLightOff_shouldReturnLightIsOff() throws Exception {
         when(lightService.turnOff()).thenReturn("Light is OFF");
 
-        mockMvc.perform(get("/light/off"))
+        mockMvc.perform(get("/api/light/off"))
                 .andExpect(status().isOk())
                 .andExpect(content().string("Light is OFF"));
 
@@ -53,11 +53,11 @@ class SmartHomeControllerTest {
     }
 
     @Test
-    @DisplayName("GET /light/status should return current light status")
+    @DisplayName("GET /api/light/status should return current light status")
     void getLightStatus_shouldReturnCurrentStatus() throws Exception {
         when(lightService.getStatus()).thenReturn("Light is currently OFF");
 
-        mockMvc.perform(get("/light/status"))
+        mockMvc.perform(get("/api/light/status"))
                 .andExpect(status().isOk())
                 .andExpect(content().string("Light is currently OFF"));
 
@@ -65,11 +65,11 @@ class SmartHomeControllerTest {
     }
 
     @Test
-    @DisplayName("GET /light/status when light is ON should return ON status")
+    @DisplayName("GET /api/light/status when light is ON should return ON status")
     void getLightStatus_whenOn_shouldReturnOnStatus() throws Exception {
         when(lightService.getStatus()).thenReturn("Light is currently ON");
 
-        mockMvc.perform(get("/light/status"))
+        mockMvc.perform(get("/api/light/status"))
                 .andExpect(status().isOk())
                 .andExpect(content().string("Light is currently ON"));
     }

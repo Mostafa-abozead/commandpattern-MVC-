@@ -26,7 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
  * - Command history/logging can be added without modifying existing code
  */
 @RestController
-@RequestMapping("/light")
+@RequestMapping("/api/light")
 public class SmartHomeController {
 
     /**
