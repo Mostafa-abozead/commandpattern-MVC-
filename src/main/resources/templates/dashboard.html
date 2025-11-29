@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Home Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #fff;
+        }
+        
+        .dashboard {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            max-width: 400px;
+            width: 90%;
+        }
+        
+        h1 {
+            font-size: 1.8rem;
+            margin-bottom: 10px;
+            color: #fff;
+        }
+        
+        .subtitle {
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 30px;
+        }
+        
+        .light-bulb {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 30px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 3rem;
+            transition: all 0.3s ease;
+        }
+        
+        .light-on {
+            background: radial-gradient(circle, #ffd700 0%, #ffaa00 100%);
+            box-shadow: 0 0 60px rgba(255, 215, 0, 0.8), 0 0 100px rgba(255, 170, 0, 0.4);
+        }
+        
+        .light-off {
+            background: rgba(100, 100, 100, 0.5);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .status {
+            font-size: 1.4rem;
+            font-weight: bold;
+            margin-bottom: 30px;
+            padding: 15px;
+            border-radius: 10px;
+        }
+        
+        .status-on {
+            background: rgba(76, 175, 80, 0.3);
+            color: #4caf50;
+        }
+        
+        .status-off {
+            background: rgba(244, 67, 54, 0.3);
+            color: #f44336;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+        
+        .btn {
+            padding: 15px 30px;
+            font-size: 1rem;
+            font-weight: bold;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .btn-on {
+            background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
+        }
+        
+        .btn-on:hover {
+            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.6);
+        }
+        
+        .btn-off {
+            background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(244, 67, 54, 0.4);
+        }
+        
+        .btn-off:hover {
+            box-shadow: 0 6px 20px rgba(244, 67, 54, 0.6);
+        }
+        
+        .architecture-note {
+            margin-top: 30px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.6);
+            text-align: left;
+        }
+        
+        .architecture-note h4 {
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <h1>🏠 Smart Home Dashboard</h1>
+        <p class="subtitle">Command Pattern + MVC Architecture</p>
+        
+        <!-- Light Bulb Visual - Changes based on Model state -->
+        <div th:class="${lightState.on} ? 'light-bulb light-on' : 'light-bulb light-off'">
+            💡
+        </div>
+        
+        <!-- Status Display - Shows Model data from Controller -->
+        <div th:class="${lightState.on} ? 'status status-on' : 'status status-off'"
+             th:text="${lightState.statusMessage}">
+            Light Status
+        </div>
+        
+        <!-- Control Buttons - Trigger Controller actions -->
+        <div class="controls">
+            <a href="/light/on" class="btn btn-on">Turn ON</a>
+            <a href="/light/off" class="btn btn-off">Turn OFF</a>
+        </div>
+        
+        <!-- Architecture Note for Educational Purpose -->
+        <div class="architecture-note">
+            <h4>📚 MVC + Command Pattern Flow:</h4>
+            <p><strong>View</strong> (This Page) → <strong>Controller</strong> → <strong>Command</strong> → <strong>Service</strong> → Update <strong>Model</strong> → Return <strong>View</strong></p>
+        </div>
+    </div>
+</body>
+</html>
