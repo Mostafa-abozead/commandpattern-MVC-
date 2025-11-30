@@ -35,7 +35,7 @@ This implementation demonstrates a **Strict Command Design Pattern** integrated 
 ### Refactored Execution Flow
 
 ```
-Controller (Client) → Sets Command → Pushes Command to Invoker → Invoker processes Queue → Command.execute() → LightService (Receiver)
+Controller (Client) → Creates Command → Pushes Command to Invoker → Invoker processes Queue → Command.execute() → LightService (Receiver)
                                                                         ↓
                                                                    LightState (Model)
                                                                         ↓
@@ -99,7 +99,7 @@ package "Invoker Layer" #LightCoral {
     class CommandInvoker <<Invoker>> <<@Component>> {
         -commandQueue: Queue<Command>
         -command: Command
-        +setCommand(command: Command): void
+        +createCommand(command: Command): void
         +getCommand(): Command
         +pushCurrentCommand(): void
         +push(command: Command): void
@@ -281,15 +281,15 @@ view -> controller : GET /light/on
 activate controller
 deactivate view
 
-== Controller sets Command and pushes to Invoker ==
+== Controller creates Command and pushes to Invoker ==
 note right of controller
   **REFACTORED: Controller as Client**
-  - Sets Command via setCommand()
+  - Sets Command via createCommand()
   - Pushes Command via pushCurrentCommand()
   - Does NOT call execute() directly
 end note
 
-controller -> invoker : setCommand(lightOnCommand)
+controller -> invoker : createCommand(lightOnCommand)
 activate invoker
 invoker -> invoker : this.command = lightOnCommand
 invoker --> controller : void
@@ -404,8 +404,8 @@ public class CommandInvoker {
         this.commandQueue = new LinkedList<>();
     }
 
-    // Set command before pushing
-    public void setCommand(Command command) {
+    // Create command before pushing
+    public void createCommand(Command command) {
         this.command = command;
     }
     
@@ -417,7 +417,7 @@ public class CommandInvoker {
     // Push the currently set command to queue
     public void pushCurrentCommand() {
         if (this.command == null) {
-            throw new IllegalStateException("No command has been set. Call setCommand() first.");
+            throw new IllegalStateException("No command has been set. Call createCommand() first.");
         }
         commandQueue.add(this.command);
     }
@@ -457,8 +457,8 @@ public class DashboardController {
     
     @GetMapping("/light/on")
     public String turnLightOn(Model model) {
-        // Set the command first
-        commandInvoker.setCommand(lightOnCommand);
+        // Create the command first
+        commandInvoker.createCommand(lightOnCommand);
         // Push to Invoker
         commandInvoker.pushCurrentCommand();
         // Trigger execution via Invoker
@@ -495,18 +495,18 @@ public class LightOnCommand implements Command {
 
 | Requirement | Implementation |
 |-------------|----------------|
-| **Dedicated Invoker Class** | `CommandInvoker` class with FIFO queue, setCommand/push/execute methods |
-| **Set Command Before Push** | `setCommand()` allows setting which command before pushing via `pushCurrentCommand()` |
-| **Controller as Client** | `DashboardController` sets command, pushes to Invoker, triggers execution, no direct execute() |
+| **Dedicated Invoker Class** | `CommandInvoker` class with FIFO queue, createCommand/push/execute methods |
+| **Create Command Before Push** | `createCommand()` allows setting which command before pushing via `pushCurrentCommand()` |
+| **Controller as Client** | `DashboardController` creates command, pushes to Invoker, triggers execution, no direct execute() |
 | **FIFO Queue** | `CommandInvoker` maintains `Queue<Command>` for sequential execution |
 | **Strict Decoupling** | Controller has NO reference to `LightService` - only Commands do |
-| **Execution Flow** | Controller → Invoker.setCommand() → Invoker.pushCurrentCommand() → Invoker.executeCommands() → Command.execute() → Service |
+| **Execution Flow** | Controller → Invoker.createCommand() → Invoker.pushCurrentCommand() → Invoker.executeCommands() → Command.execute() → Service |
 | **No View-Model direct arrow** | Controller handles all data flow between View and Model |
 | **Command returns Model** | `execute()` returns `LightState`, not `String` |
 
 This refactored architecture ensures:
 1. The Controller (Client) is completely decoupled from the Receiver (LightService)
-2. The Controller can set which command before pushing it to the queue
+2. The Controller can create which command before pushing it to the queue
 3. The Controller does NOT call execute() directly on commands
 4. All command execution goes through the dedicated CommandInvoker
 5. Commands can be queued and executed sequentially (FIFO)

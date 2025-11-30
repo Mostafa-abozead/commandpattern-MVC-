@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
  * - All communication with Receiver happens through Commands via the Invoker
  * 
  * EXECUTION FLOW (Per UML Sequence Diagram):
- * Controller -> Sets Command via setCommand() -> Pushes Command via pushCurrentCommand()
+ * Controller -> Sets Command via createCommand() -> Pushes Command via pushCurrentCommand()
  * -> Invoker queues Command -> Controller triggers executeCommands()
  * -> Invoker processes Queue (FIFO) -> Command calls Receiver -> Returns LightState
  */
@@ -81,8 +81,8 @@ public class SmartHomeController {
      */
     @GetMapping("/on")
     public LightState turnLightOn() {
-        // Set command via Invoker (per UML: setCommand)
-        commandInvoker.setCommand(lightOnCommand);
+        // Create command via Invoker (per UML: createCommand)
+        commandInvoker.createCommand(lightOnCommand);
         // Push command to queue (per UML: pushCurrentCommand)
         commandInvoker.pushCurrentCommand();
         // Execute commands and get result (per UML: executeCommands)
@@ -96,8 +96,8 @@ public class SmartHomeController {
      */
     @GetMapping("/off")
     public LightState turnLightOff() {
-        // Set command via Invoker (per UML: setCommand)
-        commandInvoker.setCommand(lightOffCommand);
+        // Create command via Invoker (per UML: createCommand)
+        commandInvoker.createCommand(lightOffCommand);
         // Push command to queue (per UML: pushCurrentCommand)
         commandInvoker.pushCurrentCommand();
         // Execute commands and get result (per UML: executeCommands)
@@ -111,8 +111,8 @@ public class SmartHomeController {
      */
     @GetMapping("/status")
     public LightState getLightStatus() {
-        // Set command via Invoker (per UML: setCommand)
-        commandInvoker.setCommand(getStatusCommand);
+        // Create command via Invoker (per UML: createCommand)
+        commandInvoker.createCommand(getStatusCommand);
         // Push command to queue (per UML: pushCurrentCommand)
         commandInvoker.pushCurrentCommand();
         // Execute commands and get result (per UML: executeCommands)
