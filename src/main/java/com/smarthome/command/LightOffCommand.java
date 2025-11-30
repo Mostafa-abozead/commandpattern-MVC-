@@ -2,6 +2,8 @@ package com.smarthome.command;
 
 import com.smarthome.model.LightState;
 import com.smarthome.service.LightService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 /**
  * LightOffCommand - A Concrete Command in the Command Design Pattern.
@@ -10,10 +12,14 @@ import com.smarthome.service.LightService;
  * It holds a reference to the Receiver (LightService) and delegates
  * the actual work to it.
  * 
- * STRICT DECOUPLING: The Controller (Invoker) doesn't need to know about
+ * STRICT DECOUPLING: The Controller (Client) doesn't need to know about
  * the LightService. It only knows about the Command interface.
  * This command handles all interaction with the Receiver internally.
+ * 
+ * SPRING BEAN: This command is a Spring-managed bean (@Component) that
+ * is injected with the LightService (Receiver) dependency.
  */
+@Component
 public class LightOffCommand implements Command {
 
     /**
@@ -23,9 +29,11 @@ public class LightOffCommand implements Command {
 
     /**
      * Constructor that receives the Receiver (LightService) as a dependency.
+     * Spring will inject the LightService bean automatically.
      * 
      * @param lightService The service that will perform the actual operation
      */
+    @Autowired
     public LightOffCommand(LightService lightService) {
         this.lightService = lightService;
     }

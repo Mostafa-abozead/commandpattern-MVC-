@@ -1,5 +1,8 @@
 package com.smarthome;
 
+import com.smarthome.command.GetStatusCommand;
+import com.smarthome.command.LightOffCommand;
+import com.smarthome.command.LightOnCommand;
 import com.smarthome.controller.DashboardController;
 import com.smarthome.invoker.CommandInvoker;
 import com.smarthome.service.LightService;
@@ -20,13 +23,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 
  * These tests verify that the MVC flow works correctly:
  * - Controller receives requests
- * - Controller pushes commands to the CommandInvoker
- * - Controller triggers execution via the Invoker
+ * - Controller sets commands on the CommandInvoker
+ * - Controller pushes commands and triggers execution via the Invoker
  * - Controller updates the Model
  * - Controller returns the correct View name
  */
 @WebMvcTest(DashboardController.class)
-@Import(CommandInvoker.class)
+@Import({CommandInvoker.class, LightOnCommand.class, LightOffCommand.class, GetStatusCommand.class})
 class DashboardControllerTest {
 
     @Autowired

@@ -2,6 +2,8 @@ package com.smarthome.command;
 
 import com.smarthome.model.LightState;
 import com.smarthome.service.LightService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 /**
  * GetStatusCommand - A Concrete Command to get the current light status.
@@ -11,7 +13,11 @@ import com.smarthome.service.LightService;
  * 
  * STRICT DECOUPLING: This allows the Controller to get status
  * without having any direct reference to the LightService.
+ * 
+ * SPRING BEAN: This command is a Spring-managed bean (@Component) that
+ * is injected with the LightService (Receiver) dependency.
  */
+@Component
 public class GetStatusCommand implements Command {
 
     /**
@@ -21,9 +27,11 @@ public class GetStatusCommand implements Command {
 
     /**
      * Constructor that receives the Receiver (LightService) as a dependency.
+     * Spring will inject the LightService bean automatically.
      * 
      * @param lightService The service that holds the light state
      */
+    @Autowired
     public GetStatusCommand(LightService lightService) {
         this.lightService = lightService;
     }
