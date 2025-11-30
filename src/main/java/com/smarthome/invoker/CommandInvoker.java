@@ -73,15 +73,15 @@ public class CommandInvoker {
 
     /**
      * Pushes the currently set command to the queue.
-     * The command must be set using createCommand() before calling this method.
+     * The command must be created using createCommand() before calling this method.
      * 
      * Per UML: pushCurrentCommand(): void - Adds the currently set command to the queue.
      * 
-     * @throws IllegalStateException if no command has been set
+     * @throws IllegalStateException if no command has been created
      */
     public void pushCurrentCommand() {
         if (this.command == null) {
-            throw new IllegalStateException("No command has been set. Call createCommand() first.");
+            throw new IllegalStateException("No command has been created. Call createCommand() first.");
         }
         commandQueue.add(this.command);
     }
