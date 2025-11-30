@@ -27,7 +27,7 @@ import org.springframework.web.bind.annotation.GetMapping;
  * - Uses Spring's Model to pass data to the View
  * 
  * EXECUTION FLOW (Per UML Sequence Diagram):
- * Controller -> Sets Command via setCommand() -> Pushes Command via pushCurrentCommand()
+ * Controller -> Sets Command via createCommand() -> Pushes Command via pushCurrentCommand()
  * -> Invoker queues Command -> Controller triggers executeCommands()
  * -> Invoker processes Queue (FIFO) -> Command calls Receiver -> Returns LightState
  * 
@@ -90,7 +90,7 @@ public class DashboardController {
      * 
      * COMMAND PATTERN FLOW (Per UML Sequence Diagram):
      * 1. User navigates to /dashboard
-     * 2. Controller sets the GET_STATUS command via invoker.setCommand()
+     * 2. Controller creates the GET_STATUS command via invoker.createCommand()
      * 3. Controller pushes Command to queue via invoker.pushCurrentCommand()
      * 4. Controller triggers execution via invoker.executeCommands()
      * 5. Invoker processes queue (FIFO) and executes Command
@@ -105,8 +105,8 @@ public class DashboardController {
      */
     @GetMapping("/dashboard")
     public String showDashboard(Model model) {
-        // Set command via Invoker (per UML: setCommand)
-        commandInvoker.setCommand(getStatusCommand);
+        // Create command via Invoker (per UML: createCommand)
+        commandInvoker.createCommand(getStatusCommand);
         // Push command to queue (per UML: pushCurrentCommand)
         commandInvoker.pushCurrentCommand();
         // Execute commands and get result (per UML: executeCommands)
@@ -124,7 +124,7 @@ public class DashboardController {
      * 
      * COMMAND PATTERN FLOW (Per UML Sequence Diagram):
      * 1. User clicks "Turn ON" button on View
-     * 2. Controller sets the LIGHT_ON command via invoker.setCommand()
+     * 2. Controller creates the LIGHT_ON command via invoker.createCommand()
      * 3. Controller pushes Command to queue via invoker.pushCurrentCommand()
      * 4. Controller triggers execution via invoker.executeCommands()
      * 5. Invoker processes queue (FIFO) and executes Command
@@ -140,8 +140,8 @@ public class DashboardController {
      */
     @GetMapping("/light/on")
     public String turnLightOn(Model model) {
-        // Set command via Invoker (per UML: setCommand)
-        commandInvoker.setCommand(lightOnCommand);
+        // Create command via Invoker (per UML: createCommand)
+        commandInvoker.createCommand(lightOnCommand);
         // Push command to queue (per UML: pushCurrentCommand)
         commandInvoker.pushCurrentCommand();
         // Execute commands and get result (per UML: executeCommands)
@@ -159,7 +159,7 @@ public class DashboardController {
      * 
      * COMMAND PATTERN FLOW (Per UML Sequence Diagram):
      * 1. User clicks "Turn OFF" button on View
-     * 2. Controller sets the LIGHT_OFF command via invoker.setCommand()
+     * 2. Controller creates the LIGHT_OFF command via invoker.createCommand()
      * 3. Controller pushes Command to queue via invoker.pushCurrentCommand()
      * 4. Controller triggers execution via invoker.executeCommands()
      * 5. Invoker processes queue (FIFO) and executes Command
@@ -175,8 +175,8 @@ public class DashboardController {
      */
     @GetMapping("/light/off")
     public String turnLightOff(Model model) {
-        // Set command via Invoker (per UML: setCommand)
-        commandInvoker.setCommand(lightOffCommand);
+        // Create command via Invoker (per UML: createCommand)
+        commandInvoker.createCommand(lightOffCommand);
         // Push command to queue (per UML: pushCurrentCommand)
         commandInvoker.pushCurrentCommand();
         // Execute commands and get result (per UML: executeCommands)
