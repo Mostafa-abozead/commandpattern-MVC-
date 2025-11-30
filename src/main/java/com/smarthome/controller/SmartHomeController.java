@@ -1,5 +1,9 @@
 package com.smarthome.controller;
 
+import com.smarthome.command.Command;
+import com.smarthome.command.GetStatusCommand;
+import com.smarthome.command.LightOffCommand;
+import com.smarthome.command.LightOnCommand;
 import com.smarthome.invoker.CommandInvoker;
 import com.smarthome.model.LightState;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,37 +15,63 @@ import org.springframework.web.bind.annotation.RestController;
  * SmartHomeController - REST API Client in the Strict Command Design Pattern.
  * 
  * This REST controller provides API endpoints for controlling the light.
- * It follows the same refactored command pattern as DashboardController.
+ * It follows the same command pattern as DashboardController.
  * 
- * REFACTORED ARCHITECTURE:
+ * REFACTORED ARCHITECTURE (Per UML Class Diagram):
  * - Controller acts as a CLIENT, not an Invoker
- * - Controller delegates command creation and execution to the CommandInvoker
- * - Controller has NO direct dependency on LightService (only CommandInvoker does)
+ * - Controller has reference to Command beans (injected by Spring)
+ * - Controller delegates command queuing and execution to the CommandInvoker
+ * - Controller has NO direct dependency on LightService
  * - All communication with Receiver happens through Commands via the Invoker
  * 
- * EXECUTION FLOW:
- * Controller -> Creates Command via Invoker -> Pushes Command to Invoker -> Invoker processes Queue 
- * -> Command calls Receiver -> Receiver updates Model
+ * EXECUTION FLOW (Per UML Sequence Diagram):
+ * Controller -> Sets Command via setCommand() -> Pushes Command via pushCurrentCommand()
+ * -> Invoker queues Command -> Controller triggers executeCommands()
+ * -> Invoker processes Queue (FIFO) -> Command calls Receiver -> Returns LightState
  */
 @RestController
 @RequestMapping("/api/light")
 public class SmartHomeController {
 
     /**
-     * The CommandInvoker manages command creation, queue, and execution.
-     * Controller creates commands via the Invoker and triggers execution.
+     * The CommandInvoker manages command queue and execution.
+     * Controller sets commands on the Invoker and triggers execution.
      */
     private final CommandInvoker commandInvoker;
 
     /**
-     * Constructor - Controller only needs CommandInvoker.
-     * Controller NEVER uses LightService directly.
+     * Command bean reference for getting light status.
+     */
+    private final Command getStatusCommand;
+
+    /**
+     * Command bean reference for turning light ON.
+     */
+    private final Command lightOnCommand;
+
+    /**
+     * Command bean reference for turning light OFF.
+     */
+    private final Command lightOffCommand;
+
+    /**
+     * Constructor - Controller receives CommandInvoker and Command beans.
+     * Controller NEVER receives LightService directly.
      * 
-     * @param commandInvoker The dedicated Invoker for command creation and execution
+     * @param commandInvoker The dedicated Invoker for command queuing and execution
+     * @param getStatusCommand The command bean for getting light status
+     * @param lightOnCommand The command bean for turning light ON
+     * @param lightOffCommand The command bean for turning light OFF
      */
     @Autowired
-    public SmartHomeController(CommandInvoker commandInvoker) {
+    public SmartHomeController(CommandInvoker commandInvoker,
+                               GetStatusCommand getStatusCommand,
+                               LightOnCommand lightOnCommand,
+                               LightOffCommand lightOffCommand) {
         this.commandInvoker = commandInvoker;
+        this.getStatusCommand = getStatusCommand;
+        this.lightOnCommand = lightOnCommand;
+        this.lightOffCommand = lightOffCommand;
     }
 
     /**
@@ -51,9 +81,11 @@ public class SmartHomeController {
      */
     @GetMapping("/on")
     public LightState turnLightOn() {
-        // Create command via Invoker, push, and execute
-        commandInvoker.createCommand(CommandInvoker.CommandType.LIGHT_ON);
+        // Set command via Invoker (per UML: setCommand)
+        commandInvoker.setCommand(lightOnCommand);
+        // Push command to queue (per UML: pushCurrentCommand)
         commandInvoker.pushCurrentCommand();
+        // Execute commands and get result (per UML: executeCommands)
         return commandInvoker.executeCommands();
     }
 
@@ -64,9 +96,11 @@ public class SmartHomeController {
      */
     @GetMapping("/off")
     public LightState turnLightOff() {
-        // Create command via Invoker, push, and execute
-        commandInvoker.createCommand(CommandInvoker.CommandType.LIGHT_OFF);
+        // Set command via Invoker (per UML: setCommand)
+        commandInvoker.setCommand(lightOffCommand);
+        // Push command to queue (per UML: pushCurrentCommand)
         commandInvoker.pushCurrentCommand();
+        // Execute commands and get result (per UML: executeCommands)
         return commandInvoker.executeCommands();
     }
 
@@ -77,9 +111,11 @@ public class SmartHomeController {
      */
     @GetMapping("/status")
     public LightState getLightStatus() {
-        // Create command via Invoker, push, and execute
-        commandInvoker.createCommand(CommandInvoker.CommandType.GET_STATUS);
+        // Set command via Invoker (per UML: setCommand)
+        commandInvoker.setCommand(getStatusCommand);
+        // Push command to queue (per UML: pushCurrentCommand)
         commandInvoker.pushCurrentCommand();
+        // Execute commands and get result (per UML: executeCommands)
         return commandInvoker.executeCommands();
     }
 }

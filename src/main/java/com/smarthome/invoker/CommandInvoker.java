@@ -1,12 +1,7 @@
 package com.smarthome.invoker;
 
 import com.smarthome.command.Command;
-import com.smarthome.command.LightOnCommand;
-import com.smarthome.command.LightOffCommand;
-import com.smarthome.command.GetStatusCommand;
 import com.smarthome.model.LightState;
-import com.smarthome.service.LightService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.LinkedList;
@@ -20,78 +15,51 @@ import java.util.Queue;
  * by extracting the Invoker logic from the Controller.
  * 
  * STRICT COMMAND PATTERN IMPLEMENTATION:
- * - Maintains a Queue (FIFO) of commands
- * - Connects to the Receiver (LightService) to create commands
- * - Allows creating a command by type before pushing it to the queue
- * - Exposes a method to push (add) commands to the queue
- * - Has a mechanism to execute pending commands sequentially
- * - Controller (Client) creates and pushes commands here; Invoker executes them
+ * - Maintains a Queue<Command> (FIFO) using LinkedList
+ * - Allows setting a command reference via setCommand()
+ * - Exposes pushCurrentCommand() to add the current command to the queue
+ * - Exposes push() to directly add commands to the queue
+ * - executeCommands() processes queue in FIFO order and returns last result
+ * - Controller (Client) sets/pushes commands; Invoker queues and executes them
  * 
  * EXECUTION FLOW:
- * Controller -> Creates Command via Invoker -> Pushes Command to Invoker -> Invoker processes Queue 
- * -> Command calls Receiver -> Receiver updates Model
+ * Controller -> Sets Command via setCommand() -> Pushes Command via pushCurrentCommand() 
+ * -> Invoker queues Command -> Controller triggers executeCommands() 
+ * -> Invoker processes Queue (FIFO) -> Command calls Receiver -> Returns LightState
  */
 @Component
 public class CommandInvoker {
 
     /**
-     * Enum defining the types of commands that can be created.
-     */
-    public enum CommandType {
-        LIGHT_ON,
-        LIGHT_OFF,
-        GET_STATUS
-    }
-
-    /**
      * FIFO queue to hold pending commands.
-     * Commands are executed in the order they are added.
+     * Commands are executed in the order they are added (First-In, First-Out).
      */
     private final Queue<Command> commandQueue;
 
     /**
-     * The Receiver (LightService) used to create commands.
-     */
-    private final LightService lightService;
-
-    /**
-     * The currently created command that can be pushed to the queue.
-     * This allows creating a command before pushing it.
+     * The currently set command that can be pushed to the queue.
+     * This allows setting a command before pushing it to the queue.
      */
     private Command command;
 
     /**
-     * Constructor with LightService dependency injection.
-     * The Invoker connects to the Receiver to create commands.
-     * 
-     * @param lightService The Receiver used to create commands
+     * Default constructor.
+     * Initializes the command queue as a LinkedList for FIFO behavior.
      */
-    @Autowired
-    public CommandInvoker(LightService lightService) {
+    public CommandInvoker() {
         this.commandQueue = new LinkedList<>();
-        this.lightService = lightService;
     }
 
     /**
-     * Creates a command of the specified type using the Receiver.
+     * Sets the current command reference.
      * This command can then be pushed to the queue using pushCurrentCommand().
      * 
-     * @param commandType The type of command to create
+     * Per UML: setCommand(command: Command): void
+     * 
+     * @param command The command to set as the current command
      */
-    public void createCommand(CommandType commandType) {
-        switch (commandType) {
-            case LIGHT_ON:
-                this.command = new LightOnCommand(lightService);
-                break;
-            case LIGHT_OFF:
-                this.command = new LightOffCommand(lightService);
-                break;
-            case GET_STATUS:
-                this.command = new GetStatusCommand(lightService);
-                break;
-            default:
-                throw new IllegalArgumentException("Unknown command type: " + commandType);
-        }
+    public void setCommand(Command command) {
+        this.command = command;
     }
 
     /**
@@ -104,14 +72,16 @@ public class CommandInvoker {
     }
 
     /**
-     * Pushes the currently created command to the queue.
-     * The command must be created using createCommand() before calling this method.
+     * Pushes the currently set command to the queue.
+     * The command must be set using setCommand() before calling this method.
      * 
-     * @throws IllegalStateException if no command has been created
+     * Per UML: pushCurrentCommand(): void - Adds the currently set command to the queue.
+     * 
+     * @throws IllegalStateException if no command has been set
      */
     public void pushCurrentCommand() {
         if (this.command == null) {
-            throw new IllegalStateException("No command has been created. Call createCommand() first.");
+            throw new IllegalStateException("No command has been set. Call setCommand() first.");
         }
         commandQueue.add(this.command);
     }
@@ -130,16 +100,33 @@ public class CommandInvoker {
 
     /**
      * Executes all pending commands in the queue sequentially (FIFO order).
-     * Returns the result of the last executed command.
+     * 
+     * QUEUE PROCESSING LOGIC (FIFO - First In, First Out):
+     * 1. Check if the queue has pending commands
+     * 2. Poll (remove) the first command from the queue
+     * 3. Execute the command by calling its execute() method
+     * 4. Store the result (LightState) from the command
+     * 5. Repeat steps 1-4 until the queue is empty
+     * 6. Return the LightState from the LAST executed command
+     * 
+     * NOTE: The queue is automatically cleared as each command is polled and executed.
+     * This ensures commands are only executed once.
      * 
      * @return LightState from the last executed command, or null if queue was empty
      */
     public LightState executeCommands() {
+        // Track the result of the last executed command
         LightState lastState = null;
+        
+        // Process the queue in FIFO order - poll removes and returns the head of the queue
         while (!commandQueue.isEmpty()) {
+            // Poll the next command (FIFO - first added is first executed)
             Command command = commandQueue.poll();
+            // Execute the command and store the result
             lastState = command.execute();
         }
+        
+        // Return the result of the last command (for Controller to update the View)
         return lastState;
     }
 

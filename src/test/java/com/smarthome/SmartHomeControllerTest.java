@@ -1,5 +1,8 @@
 package com.smarthome;
 
+import com.smarthome.command.GetStatusCommand;
+import com.smarthome.command.LightOffCommand;
+import com.smarthome.command.LightOnCommand;
 import com.smarthome.controller.SmartHomeController;
 import com.smarthome.invoker.CommandInvoker;
 import com.smarthome.service.LightService;
@@ -24,7 +27,7 @@ import static org.hamcrest.Matchers.*;
  * the Strict Command Pattern implementation.
  */
 @WebMvcTest(SmartHomeController.class)
-@Import(CommandInvoker.class)
+@Import({CommandInvoker.class, LightOnCommand.class, LightOffCommand.class, GetStatusCommand.class})
 class SmartHomeControllerTest {
 
     @Autowired
