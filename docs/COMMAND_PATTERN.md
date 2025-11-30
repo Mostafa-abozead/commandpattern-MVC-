@@ -4,53 +4,56 @@
 
 ### Architecture Overview
 
-This implementation demonstrates a **Strict Command Design Pattern** integrated with **Model-View-Controller (MVC)** architecture.
+This implementation demonstrates a **Strict Command Design Pattern** integrated with **Model-View-Controller (MVC)** architecture. The architecture has been refactored to achieve strict separation of concerns by extracting the Invoker logic into a dedicated `CommandInvoker` class.
 
-### Key Constraints (Strict Command Pattern)
+### Key Constraints (Strict Command Pattern with Queued Invoker)
 
-1. **Invoker-Command Aggregation**: The Controller (Invoker) holds a `private Command command;` reference.
-2. **Strict Decoupling**: The Controller has **NO direct reference** to the Receiver (LightService). It communicates **ONLY via the Command interface**.
-3. **Clean Diagram**: No direct relationship between View and Model class - Controller handles all data flow.
+1. **Dedicated Invoker Class**: The `CommandInvoker` class acts as the sole Invoker, maintaining a FIFO queue of commands.
+2. **Controller as Client**: The `DashboardController` acts as a Client, not an Invoker. It identifies commands and pushes them to the `CommandInvoker`.
+3. **Strict Decoupling**: The Controller has **NO direct reference** to the Receiver (LightService). It communicates **ONLY via the CommandInvoker**.
+4. **FIFO Queue**: Commands are executed sequentially in the order they are pushed.
+5. **Clean Diagram**: No direct relationship between View and Model class - Controller handles all data flow.
 
 ### MVC Components
 
 | MVC Layer | Implementation | Description |
 |-----------|----------------|-------------|
 | **View** | `dashboard.html` | Thymeleaf template that displays the Smart Home Dashboard. |
-| **Controller** | `DashboardController` | Invoker - holds Command reference, executes commands, returns View name. |
+| **Controller** | `DashboardController` | Client - identifies Command beans, pushes to Invoker, triggers execution, returns View name. |
 | **Model** | `LightState` | POJO that carries data from Controller to View. |
 
 ### Command Pattern Participants
 
 | Pattern Role | Implementation | Description |
 |--------------|----------------|-------------|
-| **Invoker** | `DashboardController` | Holds `private Command command;` and calls `execute()`. Has NO reference to Receiver. |
+| **Invoker** | `CommandInvoker` | Dedicated class that maintains FIFO queue, executes commands sequentially. |
+| **Client** | `DashboardController` | Identifies commands, pushes to Invoker, triggers execution. Has NO reference to Receiver. |
 | **Command Interface** | `Command` | Declares `execute()` method returning `LightState`. |
 | **Concrete Commands** | `LightOnCommand`, `LightOffCommand`, `GetStatusCommand` | Hold reference to Receiver, encapsulate actions. |
 | **Receiver** | `LightService` | Contains actual hardware logic. Only Commands access it. |
 
-### Strict Decoupling Flow
+### Refactored Execution Flow
 
 ```
-Controller (Invoker) → Command Interface → Concrete Command → LightService (Receiver)
-                              ↓
-                         LightState (Model)
-                              ↓
-                        View (dashboard.html)
+Controller (Client) → Pushes Command to Invoker → Invoker processes Queue → Command.execute() → LightService (Receiver)
+                                                          ↓
+                                                     LightState (Model)
+                                                          ↓
+                                                    View (dashboard.html)
 ```
 
-**Note**: Controller NEVER accesses LightService directly - only through Commands.
+**Note**: Controller NEVER accesses LightService directly and NEVER calls execute() directly - only through the CommandInvoker.
 
 ---
 
-## 2. PlantUML Class Diagram (Strict Compliance)
+## 2. PlantUML Class Diagram (Refactored with CommandInvoker)
 
 ```plantuml
 @startuml
 skinparam shadowing false
 skinparam monochrome true
 
-title Smart Home Dashboard - Strict Command Pattern Class Diagram
+title Smart Home Dashboard - Refactored Command Pattern Class Diagram
 
 ' ========================================
 ' View Layer
@@ -63,11 +66,11 @@ package "View Layer" #LightBlue {
 }
 
 ' ========================================
-' Controller Layer (Invoker)
+' Controller Layer (Client)
 ' ========================================
 package "Controller Layer" #LightGray {
-    class DashboardController <<Invoker>> <<@Controller>> {
-        -command: Command
+    class DashboardController <<Client>> <<@Controller>> {
+        -commandInvoker: CommandInvoker
         -lightOnCommand: Command
         -lightOffCommand: Command
         -getStatusCommand: Command
@@ -86,6 +89,20 @@ package "Model Layer" #LightGreen {
         -statusMessage: String
         +isOn(): boolean
         +getStatusMessage(): String
+    }
+}
+
+' ========================================
+' Invoker
+' ========================================
+package "Invoker Layer" #LightCoral {
+    class CommandInvoker <<Invoker>> <<@Component>> {
+        -commandQueue: Queue<Command>
+        +push(command: Command): void
+        +executeCommands(): LightState
+        +pushAndExecute(command: Command): LightState
+        +getQueueSize(): int
+        +clearQueue(): void
     }
 }
 
@@ -127,11 +144,14 @@ package "Service Layer" #LightYellow {
 }
 
 ' ========================================
-' Relationships (Strict Compliance)
+' Relationships (Refactored)
 ' ========================================
 
-' Invoker-Command Aggregation (Controller holds Command reference)
-DashboardController o-- Command : aggregation\n(private command)
+' Controller-Invoker (Controller depends on Invoker)
+DashboardController --> CommandInvoker : uses
+
+' Controller holds Command references (for identification)
+DashboardController o-- Command : holds reference
 
 ' Controller-Model (Controller creates Model)
 DashboardController --> LightState : creates
@@ -141,6 +161,9 @@ DashboardController ..> "dashboard.html" : returns "dashboard"
 
 ' View requests to Controller
 "dashboard.html" ..> DashboardController : HTTP Request
+
+' Invoker-Command (Invoker queues and executes Commands)
+CommandInvoker o-- Command : queues & executes
 
 ' Command hierarchy
 LightOnCommand ..|> Command : implements
@@ -156,19 +179,28 @@ LightOffCommand --> LightService : uses
 GetStatusCommand --> LightService : uses
 
 ' ========================================
-' Notes for Strict Compliance
+' Notes for Refactored Architecture
 ' ========================================
 note right of DashboardController
-  **STRICT DECOUPLING**
-  - Holds Command reference (Aggregation)
-  - NO direct reference to LightService
-  - Communicates ONLY via Command interface
+  **REFACTORED: Controller as Client**
+  - NO direct execute() calls
+  - Pushes Commands to Invoker
+  - Triggers execution via Invoker
+  - NO reference to LightService
+end note
+
+note right of CommandInvoker
+  **NEW: Dedicated Invoker**
+  - Maintains FIFO Queue
+  - Executes Commands sequentially
+  - push() adds to queue
+  - executeCommands() processes queue
 end note
 
 note bottom of Command
   **Command returns LightState**
-  Controller gets Model from Command,
-  never touches the Receiver
+  Invoker gets Model from Command,
+  Controller never touches the Receiver
 end note
 
 ' ========================================
@@ -176,7 +208,8 @@ end note
 ' ========================================
 legend right
   |= Stereotype |= Description |
-  | <<Invoker>> | Holds Command, calls execute() |
+  | <<Client>> | Identifies Command, pushes to Invoker |
+  | <<Invoker>> | Maintains queue, executes commands |
   | <<Command Interface>> | Declares execute(): LightState |
   | <<Concrete Command>> | Holds Receiver reference |
   | <<Receiver>> | Actual hardware logic |
@@ -185,6 +218,7 @@ legend right
   
   **KEY: No arrow between View and Model**
   **KEY: No arrow from Controller to LightService**
+  **KEY: Controller depends on CommandInvoker**
 endlegend
 
 @enduml
@@ -192,14 +226,14 @@ endlegend
 
 ---
 
-## 3. PlantUML Sequence Diagram (Strict MVC Cycle)
+## 3. PlantUML Sequence Diagram (Refactored with Queued Invoker)
 
 ```plantuml
 @startuml
 skinparam shadowing false
 skinparam monochrome true
 
-title Turn On Light - Strict Command Pattern + MVC Flow
+title Turn On Light - Refactored Command Pattern + MVC Flow
 
 ' ========================================
 ' Participants
@@ -211,7 +245,11 @@ box "View Layer" #LightBlue
 end box
 
 box "Controller Layer" #LightGray
-    participant "DashboardController\n<<Invoker>>\n<<@Controller>>" as controller
+    participant "DashboardController\n<<Client>>\n<<@Controller>>" as controller
+end box
+
+box "Invoker Layer" #LightCoral
+    participant "CommandInvoker\n<<Invoker>>\n<<@Component>>" as invoker
 end box
 
 box "Command Pattern" #White
@@ -239,17 +277,34 @@ view -> controller : GET /light/on
 activate controller
 deactivate view
 
-== Controller sets Command (Aggregation) ==
+== Controller identifies Command and pushes to Invoker ==
 note right of controller
-  **STRICT: Controller holds Command**
-  this.command = lightOnCommand
-  (NO reference to LightService)
+  **REFACTORED: Controller as Client**
+  - Identifies correct Command (lightOnCommand)
+  - Pushes Command to Invoker
+  - Does NOT call execute() directly
 end note
 
-controller -> controller : this.command = lightOnCommand
+controller -> invoker : push(lightOnCommand)
+activate invoker
 
-== Controller executes Command ==
-controller -> commandInterface : command.execute()
+invoker -> invoker : commandQueue.add(command)
+invoker --> controller : void
+deactivate invoker
+
+== Controller triggers execution via Invoker ==
+controller -> invoker : executeCommands()
+activate invoker
+
+== Invoker processes Queue ==
+note right of invoker
+  **Invoker processes FIFO Queue**
+  - Polls command from queue
+  - Calls execute() on command
+  - Returns result of last command
+end note
+
+invoker -> commandInterface : command.execute()
 activate commandInterface
 
 commandInterface -> command : execute()
@@ -258,7 +313,7 @@ activate command
 == Command delegates to Receiver ==
 note right of command
   **ONLY Command accesses Receiver**
-  Controller never touches LightService
+  Controller and Invoker never touch LightService
 end note
 
 command -> service : turnOn()
@@ -273,12 +328,15 @@ command -> model ** : new LightState(true, "Light is ON")
 command --> commandInterface : LightState
 deactivate command
 
-commandInterface --> controller : LightState
+commandInterface --> invoker : LightState
 deactivate commandInterface
+
+invoker --> controller : LightState
+deactivate invoker
 
 == Controller adds Model and returns View ==
 note right of controller
-  **Controller receives Model from Command**
+  **Controller receives Model from Invoker**
   Never accesses Receiver directly
 end note
 
@@ -309,7 +367,9 @@ src/main/java/com/smarthome/
 │   ├── LightOffCommand.java       # Concrete: holds LightService
 │   └── GetStatusCommand.java      # Concrete: holds LightService
 ├── controller/
-│   └── DashboardController.java   # Invoker: holds Command, NO LightService reference
+│   └── DashboardController.java   # Client: pushes to Invoker, NO LightService reference
+├── invoker/
+│   └── CommandInvoker.java        # NEW: Dedicated Invoker with FIFO queue
 ├── model/
 │   └── LightState.java            # POJO: carries data to View
 └── service/
@@ -321,12 +381,42 @@ src/main/resources/templates/
 
 ### Key Implementation Details
 
-**DashboardController (Invoker):**
+**CommandInvoker (New Dedicated Invoker):**
+```java
+@Component
+public class CommandInvoker {
+    // FIFO queue to hold pending commands
+    private final Queue<Command> commandQueue;
+
+    public CommandInvoker() {
+        this.commandQueue = new LinkedList<>();
+    }
+
+    // Push command to queue
+    public void push(Command command) {
+        if (command != null) {
+            commandQueue.add(command);
+        }
+    }
+
+    // Execute all pending commands sequentially
+    public LightState executeCommands() {
+        LightState lastState = null;
+        while (!commandQueue.isEmpty()) {
+            Command command = commandQueue.poll();
+            lastState = command.execute();
+        }
+        return lastState;
+    }
+}
+```
+
+**DashboardController (Refactored as Client):**
 ```java
 @Controller
 public class DashboardController {
-    // STRICT: Holds Command reference (Aggregation)
-    private Command command;
+    // Controller now depends on CommandInvoker, not direct execution
+    private final CommandInvoker commandInvoker;
     
     // Pre-configured commands
     private final Command lightOnCommand;
@@ -337,8 +427,10 @@ public class DashboardController {
     
     @GetMapping("/light/on")
     public String turnLightOn(Model model) {
-        this.command = lightOnCommand;        // Set command
-        LightState lightState = command.execute();  // Execute
+        // Push command to Invoker
+        commandInvoker.push(lightOnCommand);
+        // Trigger execution via Invoker
+        LightState lightState = commandInvoker.executeCommands();
         model.addAttribute("lightState", lightState);
         return "dashboard";
     }
@@ -367,13 +459,21 @@ public class LightOnCommand implements Command {
 
 ---
 
-## Summary - Strict Compliance
+## Summary - Refactored Architecture
 
 | Requirement | Implementation |
 |-------------|----------------|
-| **Invoker-Command Aggregation** | `DashboardController` has `private Command command;` field |
+| **Dedicated Invoker Class** | `CommandInvoker` class with FIFO queue and push/execute methods |
+| **Controller as Client** | `DashboardController` pushes to Invoker, triggers execution, no direct execute() |
+| **FIFO Queue** | `CommandInvoker` maintains `Queue<Command>` for sequential execution |
 | **Strict Decoupling** | Controller has NO reference to `LightService` - only Commands do |
+| **Execution Flow** | Controller → Invoker.push() → Invoker.executeCommands() → Command.execute() → Service |
 | **No View-Model direct arrow** | Controller handles all data flow between View and Model |
 | **Command returns Model** | `execute()` returns `LightState`, not `String` |
 
-This architecture ensures the Controller (Invoker) is completely decoupled from the Receiver (LightService) and communicates **ONLY through the Command interface**.
+This refactored architecture ensures:
+1. The Controller (Client) is completely decoupled from the Receiver (LightService)
+2. The Controller does NOT call execute() directly on commands
+3. All command execution goes through the dedicated CommandInvoker
+4. Commands can be queued and executed sequentially (FIFO)
+5. Strict separation of concerns between Client, Invoker, Command, and Receiver

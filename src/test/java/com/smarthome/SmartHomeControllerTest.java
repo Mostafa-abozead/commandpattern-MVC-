@@ -1,12 +1,14 @@
 package com.smarthome;
 
 import com.smarthome.controller.SmartHomeController;
+import com.smarthome.invoker.CommandInvoker;
 import com.smarthome.service.LightService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.mockito.Mockito.*;
@@ -18,9 +20,11 @@ import static org.hamcrest.Matchers.*;
  * Integration tests for the SmartHomeController (REST API).
  * 
  * These tests verify that the REST endpoints work correctly
- * and properly delegate to the Strict Command Pattern implementation.
+ * and properly delegate to the CommandInvoker which executes
+ * the Strict Command Pattern implementation.
  */
 @WebMvcTest(SmartHomeController.class)
+@Import(CommandInvoker.class)
 class SmartHomeControllerTest {
 
     @Autowired
