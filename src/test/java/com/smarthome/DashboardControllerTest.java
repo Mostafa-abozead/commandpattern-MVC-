@@ -1,12 +1,14 @@
 package com.smarthome;
 
 import com.smarthome.controller.DashboardController;
+import com.smarthome.invoker.CommandInvoker;
 import com.smarthome.service.LightService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.mockito.Mockito.*;
@@ -18,10 +20,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 
  * These tests verify that the MVC flow works correctly:
  * - Controller receives requests
+ * - Controller pushes commands to the CommandInvoker
+ * - Controller triggers execution via the Invoker
  * - Controller updates the Model
  * - Controller returns the correct View name
  */
 @WebMvcTest(DashboardController.class)
+@Import(CommandInvoker.class)
 class DashboardControllerTest {
 
     @Autowired

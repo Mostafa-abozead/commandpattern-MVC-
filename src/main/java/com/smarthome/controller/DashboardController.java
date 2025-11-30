@@ -1,90 +1,80 @@
 package com.smarthome.controller;
 
-import com.smarthome.command.Command;
-import com.smarthome.command.LightOnCommand;
-import com.smarthome.command.LightOffCommand;
-import com.smarthome.command.GetStatusCommand;
+import com.smarthome.invoker.CommandInvoker;
 import com.smarthome.model.LightState;
-import com.smarthome.service.LightService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 
 /**
- * DashboardController - The Invoker in the Strict Command Design Pattern.
+ * DashboardController - The Client in the Strict Command Design Pattern.
  * 
- * STRICT COMMAND PATTERN IMPLEMENTATION:
- * - The Controller holds a reference to Command (Aggregation relationship)
+ * REFACTORED ARCHITECTURE:
+ * - The Controller acts as a CLIENT, not an Invoker
+ * - The Controller delegates command creation and execution to the CommandInvoker
  * - The Controller has NO direct dependency on the Receiver (LightService)
- * - All communication with the Receiver happens ONLY through Commands
+ * - All communication with the Receiver happens through Commands via the Invoker
  * 
  * MVC ARCHITECTURE:
  * - @Controller annotation (NOT @RestController)
  * - Returns View names, not raw data
  * - Uses Spring's Model to pass data to the View
  * 
+ * EXECUTION FLOW:
+ * Controller -> Creates Command via Invoker -> Pushes Command to Invoker -> Invoker processes Queue 
+ * -> Command calls Receiver -> Receiver updates Model
+ * 
  * DECOUPLING BENEFITS:
  * - Controller doesn't know HOW to control the light
  * - Controller doesn't know about LightService at all
- * - All it knows is the Command interface
+ * - Controller doesn't call execute() directly on commands
+ * - All execution logic is delegated to CommandInvoker
  */
 @Controller
 public class DashboardController {
 
     /**
-     * Command reference - The Controller (Invoker) holds a reference to Command.
-     * This demonstrates the Aggregation relationship between Invoker and Command.
-     * The Controller communicates ONLY via this Command interface.
+     * The CommandInvoker manages command creation, queue, and execution.
+     * Controller creates commands via the Invoker and triggers execution.
      */
-    private Command command;
-
-    /**
-     * Pre-configured commands injected via Spring DI.
-     * These are ready to use - Controller just assigns them and calls execute().
-     */
-    private final Command lightOnCommand;
-    private final Command lightOffCommand;
-    private final Command getStatusCommand;
+    private final CommandInvoker commandInvoker;
 
     /**
      * Constructor-based dependency injection.
-     * Commands are created with the Receiver (LightService) internally.
-     * The Controller NEVER sees or interacts with LightService directly.
+     * The Controller only needs the CommandInvoker - it doesn't know about LightService.
      * 
-     * @param lightService Injected by Spring, passed to Commands only
+     * @param commandInvoker The dedicated Invoker for command creation and execution
      */
     @Autowired
-    public DashboardController(LightService lightService) {
-        // Commands are created with the Receiver - Controller doesn't use it directly
-        this.lightOnCommand = new LightOnCommand(lightService);
-        this.lightOffCommand = new LightOffCommand(lightService);
-        this.getStatusCommand = new GetStatusCommand(lightService);
+    public DashboardController(CommandInvoker commandInvoker) {
+        this.commandInvoker = commandInvoker;
     }
 
     /**
      * Displays the Smart Home Dashboard.
      * 
-     * STRICT COMMAND PATTERN FLOW:
+     * REFACTORED COMMAND PATTERN FLOW:
      * 1. User navigates to /dashboard
-     * 2. Controller sets command = getStatusCommand
-     * 3. Controller calls command.execute()
-     * 4. Command returns LightState (Model)
-     * 5. Controller adds Model to Spring's Model
-     * 6. Controller returns "dashboard" (View name)
+     * 2. Controller creates a GET_STATUS command via the Invoker
+     * 3. Controller pushes Command to CommandInvoker
+     * 4. Controller triggers execution via the Invoker
+     * 5. Invoker executes Command from queue
+     * 6. Command returns LightState (Model)
+     * 7. Controller adds Model to Spring's Model
+     * 8. Controller returns "dashboard" (View name)
      * 
-     * NOTE: Controller NEVER accesses LightService - only uses Command
+     * NOTE: Controller NEVER calls execute() directly - only the Invoker does
      * 
      * @param model Spring's Model to pass data to the View
      * @return The view name "dashboard"
      */
     @GetMapping("/dashboard")
     public String showDashboard(Model model) {
-        // Set the command (Aggregation - Invoker holds reference to Command)
-        this.command = getStatusCommand;
-        
-        // Execute command - returns LightState (Model)
-        LightState lightState = command.execute();
+        // Create command via Invoker, push, and execute
+        commandInvoker.createCommand(CommandInvoker.CommandType.GET_STATUS);
+        commandInvoker.pushCurrentCommand();
+        LightState lightState = commandInvoker.executeCommands();
         
         // Add Model to Spring's Model for the View
         model.addAttribute("lightState", lightState);
@@ -96,27 +86,28 @@ public class DashboardController {
     /**
      * Turns ON the light and returns to dashboard.
      * 
-     * STRICT COMMAND PATTERN FLOW:
+     * REFACTORED COMMAND PATTERN FLOW:
      * 1. User clicks "Turn ON" button on View
-     * 2. Controller sets command = lightOnCommand
-     * 3. Controller calls command.execute()
-     * 4. Command delegates to Receiver (internally)
-     * 5. Command returns LightState (Model)
-     * 6. Controller returns "dashboard" (View name)
+     * 2. Controller creates a LIGHT_ON command via the Invoker
+     * 3. Controller pushes Command to CommandInvoker
+     * 4. Controller triggers execution via the Invoker
+     * 5. Invoker executes Command from queue
+     * 6. Command delegates to Receiver (internally)
+     * 7. Command returns LightState (Model)
+     * 8. Controller returns "dashboard" (View name)
      * 
      * STRICT DECOUPLING: Controller doesn't know about LightService,
-     * doesn't know HOW to turn on the light - only Command knows.
+     * doesn't know HOW to turn on the light, and doesn't call execute() directly.
      * 
      * @param model Spring's Model to pass data to the View
      * @return The view name "dashboard"
      */
     @GetMapping("/light/on")
     public String turnLightOn(Model model) {
-        // Set the command (Aggregation - Invoker holds reference to Command)
-        this.command = lightOnCommand;
-        
-        // Execute command - returns LightState (Model)
-        LightState lightState = command.execute();
+        // Create command via Invoker, push, and execute
+        commandInvoker.createCommand(CommandInvoker.CommandType.LIGHT_ON);
+        commandInvoker.pushCurrentCommand();
+        LightState lightState = commandInvoker.executeCommands();
         
         // Add Model to Spring's Model for the View
         model.addAttribute("lightState", lightState);
@@ -128,27 +119,28 @@ public class DashboardController {
     /**
      * Turns OFF the light and returns to dashboard.
      * 
-     * STRICT COMMAND PATTERN FLOW:
+     * REFACTORED COMMAND PATTERN FLOW:
      * 1. User clicks "Turn OFF" button on View
-     * 2. Controller sets command = lightOffCommand
-     * 3. Controller calls command.execute()
-     * 4. Command delegates to Receiver (internally)
-     * 5. Command returns LightState (Model)
-     * 6. Controller returns "dashboard" (View name)
+     * 2. Controller creates a LIGHT_OFF command via the Invoker
+     * 3. Controller pushes Command to CommandInvoker
+     * 4. Controller triggers execution via the Invoker
+     * 5. Invoker executes Command from queue
+     * 6. Command delegates to Receiver (internally)
+     * 7. Command returns LightState (Model)
+     * 8. Controller returns "dashboard" (View name)
      * 
      * STRICT DECOUPLING: Controller doesn't know about LightService,
-     * doesn't know HOW to turn off the light - only Command knows.
+     * doesn't know HOW to turn off the light, and doesn't call execute() directly.
      * 
      * @param model Spring's Model to pass data to the View
      * @return The view name "dashboard"
      */
     @GetMapping("/light/off")
     public String turnLightOff(Model model) {
-        // Set the command (Aggregation - Invoker holds reference to Command)
-        this.command = lightOffCommand;
-        
-        // Execute command - returns LightState (Model)
-        LightState lightState = command.execute();
+        // Create command via Invoker, push, and execute
+        commandInvoker.createCommand(CommandInvoker.CommandType.LIGHT_OFF);
+        commandInvoker.pushCurrentCommand();
+        LightState lightState = commandInvoker.executeCommands();
         
         // Add Model to Spring's Model for the View
         model.addAttribute("lightState", lightState);
