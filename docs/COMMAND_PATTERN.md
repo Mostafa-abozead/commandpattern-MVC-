@@ -35,11 +35,11 @@ This implementation demonstrates a **Strict Command Design Pattern** integrated 
 ### Refactored Execution Flow
 
 ```
-Controller (Client) → Pushes Command to Invoker → Invoker processes Queue → Command.execute() → LightService (Receiver)
-                                                          ↓
-                                                     LightState (Model)
-                                                          ↓
-                                                    View (dashboard.html)
+Controller (Client) → Sets Command → Pushes Command to Invoker → Invoker processes Queue → Command.execute() → LightService (Receiver)
+                                                                        ↓
+                                                                   LightState (Model)
+                                                                        ↓
+                                                                  View (dashboard.html)
 ```
 
 **Note**: Controller NEVER accesses LightService directly and NEVER calls execute() directly - only through the CommandInvoker.
@@ -98,6 +98,10 @@ package "Model Layer" #LightGreen {
 package "Invoker Layer" #LightCoral {
     class CommandInvoker <<Invoker>> <<@Component>> {
         -commandQueue: Queue<Command>
+        -command: Command
+        +setCommand(command: Command): void
+        +getCommand(): Command
+        +pushCurrentCommand(): void
         +push(command: Command): void
         +executeCommands(): LightState
         +pushAndExecute(command: Command): LightState
@@ -277,18 +281,23 @@ view -> controller : GET /light/on
 activate controller
 deactivate view
 
-== Controller identifies Command and pushes to Invoker ==
+== Controller sets Command and pushes to Invoker ==
 note right of controller
   **REFACTORED: Controller as Client**
-  - Identifies correct Command (lightOnCommand)
-  - Pushes Command to Invoker
+  - Sets Command via setCommand()
+  - Pushes Command via pushCurrentCommand()
   - Does NOT call execute() directly
 end note
 
-controller -> invoker : push(lightOnCommand)
+controller -> invoker : setCommand(lightOnCommand)
 activate invoker
+invoker -> invoker : this.command = lightOnCommand
+invoker --> controller : void
+deactivate invoker
 
-invoker -> invoker : commandQueue.add(command)
+controller -> invoker : pushCurrentCommand()
+activate invoker
+invoker -> invoker : commandQueue.add(this.command)
 invoker --> controller : void
 deactivate invoker
 
@@ -387,12 +396,33 @@ src/main/resources/templates/
 public class CommandInvoker {
     // FIFO queue to hold pending commands
     private final Queue<Command> commandQueue;
+    
+    // Currently set command
+    private Command command;
 
     public CommandInvoker() {
         this.commandQueue = new LinkedList<>();
     }
 
-    // Push command to queue
+    // Set command before pushing
+    public void setCommand(Command command) {
+        this.command = command;
+    }
+    
+    // Get currently set command
+    public Command getCommand() {
+        return this.command;
+    }
+    
+    // Push the currently set command to queue
+    public void pushCurrentCommand() {
+        if (this.command == null) {
+            throw new IllegalStateException("No command has been set. Call setCommand() first.");
+        }
+        commandQueue.add(this.command);
+    }
+
+    // Push command to queue (direct push)
     public void push(Command command) {
         if (command != null) {
             commandQueue.add(command);
@@ -427,8 +457,10 @@ public class DashboardController {
     
     @GetMapping("/light/on")
     public String turnLightOn(Model model) {
-        // Push command to Invoker
-        commandInvoker.push(lightOnCommand);
+        // Set the command first
+        commandInvoker.setCommand(lightOnCommand);
+        // Push to Invoker
+        commandInvoker.pushCurrentCommand();
         // Trigger execution via Invoker
         LightState lightState = commandInvoker.executeCommands();
         model.addAttribute("lightState", lightState);
@@ -463,17 +495,19 @@ public class LightOnCommand implements Command {
 
 | Requirement | Implementation |
 |-------------|----------------|
-| **Dedicated Invoker Class** | `CommandInvoker` class with FIFO queue and push/execute methods |
-| **Controller as Client** | `DashboardController` pushes to Invoker, triggers execution, no direct execute() |
+| **Dedicated Invoker Class** | `CommandInvoker` class with FIFO queue, setCommand/push/execute methods |
+| **Set Command Before Push** | `setCommand()` allows setting which command before pushing via `pushCurrentCommand()` |
+| **Controller as Client** | `DashboardController` sets command, pushes to Invoker, triggers execution, no direct execute() |
 | **FIFO Queue** | `CommandInvoker` maintains `Queue<Command>` for sequential execution |
 | **Strict Decoupling** | Controller has NO reference to `LightService` - only Commands do |
-| **Execution Flow** | Controller → Invoker.push() → Invoker.executeCommands() → Command.execute() → Service |
+| **Execution Flow** | Controller → Invoker.setCommand() → Invoker.pushCurrentCommand() → Invoker.executeCommands() → Command.execute() → Service |
 | **No View-Model direct arrow** | Controller handles all data flow between View and Model |
 | **Command returns Model** | `execute()` returns `LightState`, not `String` |
 
 This refactored architecture ensures:
 1. The Controller (Client) is completely decoupled from the Receiver (LightService)
-2. The Controller does NOT call execute() directly on commands
-3. All command execution goes through the dedicated CommandInvoker
-4. Commands can be queued and executed sequentially (FIFO)
-5. Strict separation of concerns between Client, Invoker, Command, and Receiver
+2. The Controller can set which command before pushing it to the queue
+3. The Controller does NOT call execute() directly on commands
+4. All command execution goes through the dedicated CommandInvoker
+5. Commands can be queued and executed sequentially (FIFO)
+6. Strict separation of concerns between Client, Invoker, Command, and Receiver

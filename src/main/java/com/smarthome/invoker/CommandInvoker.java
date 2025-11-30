@@ -16,12 +16,13 @@ import java.util.Queue;
  * 
  * STRICT COMMAND PATTERN IMPLEMENTATION:
  * - Maintains a Queue (FIFO) of commands
+ * - Allows setting a command before pushing it to the queue
  * - Exposes a method to push (add) commands to the queue
  * - Has a mechanism to execute pending commands sequentially
- * - Controller (Client) pushes commands here; Invoker executes them
+ * - Controller (Client) sets and pushes commands here; Invoker executes them
  * 
  * EXECUTION FLOW:
- * Controller -> Pushes Command to Invoker -> Invoker processes Queue 
+ * Controller -> Sets Command -> Pushes Command to Invoker -> Invoker processes Queue 
  * -> Command calls Receiver -> Receiver updates Model
  */
 @Component
@@ -34,10 +35,48 @@ public class CommandInvoker {
     private final Queue<Command> commandQueue;
 
     /**
+     * The currently set command that can be pushed to the queue.
+     * This allows setting a command before pushing it.
+     */
+    private Command command;
+
+    /**
      * Default constructor initializes an empty command queue.
      */
     public CommandInvoker() {
         this.commandQueue = new LinkedList<>();
+    }
+
+    /**
+     * Sets the command to be used.
+     * This command can then be pushed to the queue using pushCurrentCommand().
+     * 
+     * @param command The command to set
+     */
+    public void setCommand(Command command) {
+        this.command = command;
+    }
+
+    /**
+     * Gets the currently set command.
+     * 
+     * @return The currently set command, or null if not set
+     */
+    public Command getCommand() {
+        return this.command;
+    }
+
+    /**
+     * Pushes the currently set command to the queue.
+     * The command must be set using setCommand() before calling this method.
+     * 
+     * @throws IllegalStateException if no command has been set
+     */
+    public void pushCurrentCommand() {
+        if (this.command == null) {
+            throw new IllegalStateException("No command has been set. Call setCommand() first.");
+        }
+        commandQueue.add(this.command);
     }
 
     /**

@@ -91,8 +91,9 @@ public class DashboardController {
      */
     @GetMapping("/dashboard")
     public String showDashboard(Model model) {
-        // Push command to Invoker and trigger execution
-        commandInvoker.push(getStatusCommand);
+        // Set the command first, then push to Invoker and trigger execution
+        commandInvoker.setCommand(getStatusCommand);
+        commandInvoker.pushCurrentCommand();
         LightState lightState = commandInvoker.executeCommands();
         
         // Add Model to Spring's Model for the View
@@ -123,8 +124,9 @@ public class DashboardController {
      */
     @GetMapping("/light/on")
     public String turnLightOn(Model model) {
-        // Push command to Invoker and trigger execution
-        commandInvoker.push(lightOnCommand);
+        // Set the command first, then push to Invoker and trigger execution
+        commandInvoker.setCommand(lightOnCommand);
+        commandInvoker.pushCurrentCommand();
         LightState lightState = commandInvoker.executeCommands();
         
         // Add Model to Spring's Model for the View
@@ -155,8 +157,9 @@ public class DashboardController {
      */
     @GetMapping("/light/off")
     public String turnLightOff(Model model) {
-        // Push command to Invoker and trigger execution
-        commandInvoker.push(lightOffCommand);
+        // Set the command first, then push to Invoker and trigger execution
+        commandInvoker.setCommand(lightOffCommand);
+        commandInvoker.pushCurrentCommand();
         LightState lightState = commandInvoker.executeCommands();
         
         // Add Model to Spring's Model for the View

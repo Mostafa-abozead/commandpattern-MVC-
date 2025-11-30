@@ -232,4 +232,73 @@ class CommandInvokerTest {
         LightState state3 = commandInvoker.executeCommands();
         assertTrue(state3.isOn());
     }
+
+    // ==================== SetCommand Tests ====================
+
+    @Test
+    @DisplayName("SetCommand should set the command")
+    void setCommand_shouldSetCommand() {
+        Command command = new LightOnCommand(lightService);
+        
+        commandInvoker.setCommand(command);
+        
+        assertEquals(command, commandInvoker.getCommand());
+    }
+
+    @Test
+    @DisplayName("GetCommand should return null initially")
+    void getCommand_initially_shouldReturnNull() {
+        assertNull(commandInvoker.getCommand());
+    }
+
+    @Test
+    @DisplayName("PushCurrentCommand should add set command to queue")
+    void pushCurrentCommand_shouldAddSetCommandToQueue() {
+        Command command = new LightOnCommand(lightService);
+        commandInvoker.setCommand(command);
+        
+        commandInvoker.pushCurrentCommand();
+        
+        assertEquals(1, commandInvoker.getQueueSize());
+    }
+
+    @Test
+    @DisplayName("PushCurrentCommand without setCommand should throw exception")
+    void pushCurrentCommand_withoutSetCommand_shouldThrowException() {
+        assertThrows(IllegalStateException.class, () -> commandInvoker.pushCurrentCommand());
+    }
+
+    @Test
+    @DisplayName("SetCommand then pushCurrentCommand then execute should work")
+    void setCommand_pushCurrentCommand_execute_shouldWork() {
+        Command command = new LightOnCommand(lightService);
+        
+        commandInvoker.setCommand(command);
+        commandInvoker.pushCurrentCommand();
+        LightState result = commandInvoker.executeCommands();
+        
+        assertNotNull(result);
+        assertTrue(result.isOn());
+        assertEquals("Light is ON", result.getStatusMessage());
+    }
+
+    @Test
+    @DisplayName("Multiple setCommand and pushCurrentCommand should work correctly")
+    void multipleSetCommandAndPush_shouldWorkCorrectly() {
+        // Set and push ON command
+        commandInvoker.setCommand(new LightOnCommand(lightService));
+        commandInvoker.pushCurrentCommand();
+        
+        // Set and push OFF command (overwrites the set command reference)
+        commandInvoker.setCommand(new LightOffCommand(lightService));
+        commandInvoker.pushCurrentCommand();
+        
+        // Execute both
+        LightState result = commandInvoker.executeCommands();
+        
+        // Result should be from last command (OFF)
+        assertNotNull(result);
+        assertFalse(result.isOn());
+        assertEquals("Light is OFF", result.getStatusMessage());
+    }
 }

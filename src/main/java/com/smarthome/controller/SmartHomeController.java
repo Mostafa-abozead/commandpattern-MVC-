@@ -67,8 +67,9 @@ public class SmartHomeController {
      */
     @GetMapping("/on")
     public LightState turnLightOn() {
-        // Push command to Invoker and trigger execution
-        commandInvoker.push(lightOnCommand);
+        // Set the command first, then push to Invoker and trigger execution
+        commandInvoker.setCommand(lightOnCommand);
+        commandInvoker.pushCurrentCommand();
         return commandInvoker.executeCommands();
     }
 
@@ -79,8 +80,9 @@ public class SmartHomeController {
      */
     @GetMapping("/off")
     public LightState turnLightOff() {
-        // Push command to Invoker and trigger execution
-        commandInvoker.push(lightOffCommand);
+        // Set the command first, then push to Invoker and trigger execution
+        commandInvoker.setCommand(lightOffCommand);
+        commandInvoker.pushCurrentCommand();
         return commandInvoker.executeCommands();
     }
 
@@ -91,8 +93,9 @@ public class SmartHomeController {
      */
     @GetMapping("/status")
     public LightState getLightStatus() {
-        // Push command to Invoker and trigger execution
-        commandInvoker.push(getStatusCommand);
+        // Set the command first, then push to Invoker and trigger execution
+        commandInvoker.setCommand(getStatusCommand);
+        commandInvoker.pushCurrentCommand();
         return commandInvoker.executeCommands();
     }
 }
