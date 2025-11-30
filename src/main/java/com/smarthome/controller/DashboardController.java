@@ -1,12 +1,7 @@
 package com.smarthome.controller;
 
-import com.smarthome.command.Command;
-import com.smarthome.command.LightOnCommand;
-import com.smarthome.command.LightOffCommand;
-import com.smarthome.command.GetStatusCommand;
 import com.smarthome.invoker.CommandInvoker;
 import com.smarthome.model.LightState;
-import com.smarthome.service.LightService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -17,7 +12,7 @@ import org.springframework.web.bind.annotation.GetMapping;
  * 
  * REFACTORED ARCHITECTURE:
  * - The Controller acts as a CLIENT, not an Invoker
- * - The Controller delegates command execution to the CommandInvoker
+ * - The Controller delegates command creation and execution to the CommandInvoker
  * - The Controller has NO direct dependency on the Receiver (LightService)
  * - All communication with the Receiver happens through Commands via the Invoker
  * 
@@ -27,7 +22,7 @@ import org.springframework.web.bind.annotation.GetMapping;
  * - Uses Spring's Model to pass data to the View
  * 
  * EXECUTION FLOW:
- * Controller -> Pushes Command to Invoker -> Invoker processes Queue 
+ * Controller -> Creates Command via Invoker -> Pushes Command to Invoker -> Invoker processes Queue 
  * -> Command calls Receiver -> Receiver updates Model
  * 
  * DECOUPLING BENEFITS:
@@ -40,35 +35,20 @@ import org.springframework.web.bind.annotation.GetMapping;
 public class DashboardController {
 
     /**
-     * The CommandInvoker manages the command queue and execution.
-     * Controller pushes commands to the Invoker and triggers execution.
+     * The CommandInvoker manages command creation, queue, and execution.
+     * Controller creates commands via the Invoker and triggers execution.
      */
     private final CommandInvoker commandInvoker;
 
     /**
-     * Pre-configured commands injected via Spring DI.
-     * These are ready to use - Controller identifies the correct command
-     * and pushes it to the Invoker.
-     */
-    private final Command lightOnCommand;
-    private final Command lightOffCommand;
-    private final Command getStatusCommand;
-
-    /**
      * Constructor-based dependency injection.
-     * Commands are created with the Receiver (LightService) internally.
-     * The Controller NEVER sees or interacts with LightService directly.
+     * The Controller only needs the CommandInvoker - it doesn't know about LightService.
      * 
-     * @param lightService Injected by Spring, passed to Commands only
-     * @param commandInvoker The dedicated Invoker for command execution
+     * @param commandInvoker The dedicated Invoker for command creation and execution
      */
     @Autowired
-    public DashboardController(LightService lightService, CommandInvoker commandInvoker) {
+    public DashboardController(CommandInvoker commandInvoker) {
         this.commandInvoker = commandInvoker;
-        // Commands are created with the Receiver - Controller doesn't use it directly
-        this.lightOnCommand = new LightOnCommand(lightService);
-        this.lightOffCommand = new LightOffCommand(lightService);
-        this.getStatusCommand = new GetStatusCommand(lightService);
     }
 
     /**
@@ -76,7 +56,7 @@ public class DashboardController {
      * 
      * REFACTORED COMMAND PATTERN FLOW:
      * 1. User navigates to /dashboard
-     * 2. Controller identifies the correct Command (getStatusCommand)
+     * 2. Controller creates a GET_STATUS command via the Invoker
      * 3. Controller pushes Command to CommandInvoker
      * 4. Controller triggers execution via the Invoker
      * 5. Invoker executes Command from queue
@@ -91,8 +71,8 @@ public class DashboardController {
      */
     @GetMapping("/dashboard")
     public String showDashboard(Model model) {
-        // Set the command first, then push to Invoker and trigger execution
-        commandInvoker.setCommand(getStatusCommand);
+        // Create command via Invoker, push, and execute
+        commandInvoker.createCommand(CommandInvoker.CommandType.GET_STATUS);
         commandInvoker.pushCurrentCommand();
         LightState lightState = commandInvoker.executeCommands();
         
@@ -108,7 +88,7 @@ public class DashboardController {
      * 
      * REFACTORED COMMAND PATTERN FLOW:
      * 1. User clicks "Turn ON" button on View
-     * 2. Controller identifies the correct Command (lightOnCommand)
+     * 2. Controller creates a LIGHT_ON command via the Invoker
      * 3. Controller pushes Command to CommandInvoker
      * 4. Controller triggers execution via the Invoker
      * 5. Invoker executes Command from queue
@@ -124,8 +104,8 @@ public class DashboardController {
      */
     @GetMapping("/light/on")
     public String turnLightOn(Model model) {
-        // Set the command first, then push to Invoker and trigger execution
-        commandInvoker.setCommand(lightOnCommand);
+        // Create command via Invoker, push, and execute
+        commandInvoker.createCommand(CommandInvoker.CommandType.LIGHT_ON);
         commandInvoker.pushCurrentCommand();
         LightState lightState = commandInvoker.executeCommands();
         
@@ -141,7 +121,7 @@ public class DashboardController {
      * 
      * REFACTORED COMMAND PATTERN FLOW:
      * 1. User clicks "Turn OFF" button on View
-     * 2. Controller identifies the correct Command (lightOffCommand)
+     * 2. Controller creates a LIGHT_OFF command via the Invoker
      * 3. Controller pushes Command to CommandInvoker
      * 4. Controller triggers execution via the Invoker
      * 5. Invoker executes Command from queue
@@ -157,8 +137,8 @@ public class DashboardController {
      */
     @GetMapping("/light/off")
     public String turnLightOff(Model model) {
-        // Set the command first, then push to Invoker and trigger execution
-        commandInvoker.setCommand(lightOffCommand);
+        // Create command via Invoker, push, and execute
+        commandInvoker.createCommand(CommandInvoker.CommandType.LIGHT_OFF);
         commandInvoker.pushCurrentCommand();
         LightState lightState = commandInvoker.executeCommands();
         

@@ -1,7 +1,12 @@
 package com.smarthome.invoker;
 
 import com.smarthome.command.Command;
+import com.smarthome.command.LightOnCommand;
+import com.smarthome.command.LightOffCommand;
+import com.smarthome.command.GetStatusCommand;
 import com.smarthome.model.LightState;
+import com.smarthome.service.LightService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.LinkedList;
@@ -16,17 +21,27 @@ import java.util.Queue;
  * 
  * STRICT COMMAND PATTERN IMPLEMENTATION:
  * - Maintains a Queue (FIFO) of commands
- * - Allows setting a command before pushing it to the queue
+ * - Connects to the Receiver (LightService) to create commands
+ * - Allows creating a command by type before pushing it to the queue
  * - Exposes a method to push (add) commands to the queue
  * - Has a mechanism to execute pending commands sequentially
- * - Controller (Client) sets and pushes commands here; Invoker executes them
+ * - Controller (Client) creates and pushes commands here; Invoker executes them
  * 
  * EXECUTION FLOW:
- * Controller -> Sets Command -> Pushes Command to Invoker -> Invoker processes Queue 
+ * Controller -> Creates Command via Invoker -> Pushes Command to Invoker -> Invoker processes Queue 
  * -> Command calls Receiver -> Receiver updates Model
  */
 @Component
 public class CommandInvoker {
+
+    /**
+     * Enum defining the types of commands that can be created.
+     */
+    public enum CommandType {
+        LIGHT_ON,
+        LIGHT_OFF,
+        GET_STATUS
+    }
 
     /**
      * FIFO queue to hold pending commands.
@@ -35,46 +50,68 @@ public class CommandInvoker {
     private final Queue<Command> commandQueue;
 
     /**
-     * The currently set command that can be pushed to the queue.
-     * This allows setting a command before pushing it.
+     * The Receiver (LightService) used to create commands.
+     */
+    private final LightService lightService;
+
+    /**
+     * The currently created command that can be pushed to the queue.
+     * This allows creating a command before pushing it.
      */
     private Command command;
 
     /**
-     * Default constructor initializes an empty command queue.
+     * Constructor with LightService dependency injection.
+     * The Invoker connects to the Receiver to create commands.
+     * 
+     * @param lightService The Receiver used to create commands
      */
-    public CommandInvoker() {
+    @Autowired
+    public CommandInvoker(LightService lightService) {
         this.commandQueue = new LinkedList<>();
+        this.lightService = lightService;
     }
 
     /**
-     * Sets the command to be used.
+     * Creates a command of the specified type using the Receiver.
      * This command can then be pushed to the queue using pushCurrentCommand().
      * 
-     * @param command The command to set
+     * @param commandType The type of command to create
      */
-    public void setCommand(Command command) {
-        this.command = command;
+    public void createCommand(CommandType commandType) {
+        switch (commandType) {
+            case LIGHT_ON:
+                this.command = new LightOnCommand(lightService);
+                break;
+            case LIGHT_OFF:
+                this.command = new LightOffCommand(lightService);
+                break;
+            case GET_STATUS:
+                this.command = new GetStatusCommand(lightService);
+                break;
+            default:
+                throw new IllegalArgumentException("Unknown command type: " + commandType);
+        }
     }
 
     /**
-     * Gets the currently set command.
+     * Gets the currently created command.
      * 
-     * @return The currently set command, or null if not set
+     * @return The currently created command, or null if not created
      */
     public Command getCommand() {
         return this.command;
     }
 
     /**
-     * Pushes the currently set command to the queue.
-     * The command must be set using setCommand() before calling this method.
+     * Pushes the currently created command to the queue.
+     * The command must be created using createCommand() before calling this method.
      * 
-     * @throws IllegalStateException if no command has been set
+     * @throws IllegalStateException if no command has been created
      */
     public void pushCurrentCommand() {
         if (this.command == null) {
-            throw new IllegalStateException("No command has been set. Call setCommand() first.");
+            throw new IllegalStateException("No command has been created. Call createCommand() first.");
         }
         commandQueue.add(this.command);
     }

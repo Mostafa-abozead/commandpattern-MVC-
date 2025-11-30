@@ -1,12 +1,7 @@
 package com.smarthome.controller;
 
-import com.smarthome.command.Command;
-import com.smarthome.command.LightOnCommand;
-import com.smarthome.command.LightOffCommand;
-import com.smarthome.command.GetStatusCommand;
 import com.smarthome.invoker.CommandInvoker;
 import com.smarthome.model.LightState;
-import com.smarthome.service.LightService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -20,12 +15,12 @@ import org.springframework.web.bind.annotation.RestController;
  * 
  * REFACTORED ARCHITECTURE:
  * - Controller acts as a CLIENT, not an Invoker
- * - Controller delegates command execution to the CommandInvoker
- * - Controller has NO direct dependency on LightService (only Commands do)
+ * - Controller delegates command creation and execution to the CommandInvoker
+ * - Controller has NO direct dependency on LightService (only CommandInvoker does)
  * - All communication with Receiver happens through Commands via the Invoker
  * 
  * EXECUTION FLOW:
- * Controller -> Pushes Command to Invoker -> Invoker processes Queue 
+ * Controller -> Creates Command via Invoker -> Pushes Command to Invoker -> Invoker processes Queue 
  * -> Command calls Receiver -> Receiver updates Model
  */
 @RestController
@@ -33,31 +28,20 @@ import org.springframework.web.bind.annotation.RestController;
 public class SmartHomeController {
 
     /**
-     * The CommandInvoker manages the command queue and execution.
-     * Controller pushes commands to the Invoker and triggers execution.
+     * The CommandInvoker manages command creation, queue, and execution.
+     * Controller creates commands via the Invoker and triggers execution.
      */
     private final CommandInvoker commandInvoker;
 
     /**
-     * Pre-configured commands.
-     */
-    private final Command lightOnCommand;
-    private final Command lightOffCommand;
-    private final Command getStatusCommand;
-
-    /**
-     * Constructor - Commands are created with the Receiver.
+     * Constructor - Controller only needs CommandInvoker.
      * Controller NEVER uses LightService directly.
      * 
-     * @param lightService Injected by Spring, passed to Commands only
-     * @param commandInvoker The dedicated Invoker for command execution
+     * @param commandInvoker The dedicated Invoker for command creation and execution
      */
     @Autowired
-    public SmartHomeController(LightService lightService, CommandInvoker commandInvoker) {
+    public SmartHomeController(CommandInvoker commandInvoker) {
         this.commandInvoker = commandInvoker;
-        this.lightOnCommand = new LightOnCommand(lightService);
-        this.lightOffCommand = new LightOffCommand(lightService);
-        this.getStatusCommand = new GetStatusCommand(lightService);
     }
 
     /**
@@ -67,8 +51,8 @@ public class SmartHomeController {
      */
     @GetMapping("/on")
     public LightState turnLightOn() {
-        // Set the command first, then push to Invoker and trigger execution
-        commandInvoker.setCommand(lightOnCommand);
+        // Create command via Invoker, push, and execute
+        commandInvoker.createCommand(CommandInvoker.CommandType.LIGHT_ON);
         commandInvoker.pushCurrentCommand();
         return commandInvoker.executeCommands();
     }
@@ -80,8 +64,8 @@ public class SmartHomeController {
      */
     @GetMapping("/off")
     public LightState turnLightOff() {
-        // Set the command first, then push to Invoker and trigger execution
-        commandInvoker.setCommand(lightOffCommand);
+        // Create command via Invoker, push, and execute
+        commandInvoker.createCommand(CommandInvoker.CommandType.LIGHT_OFF);
         commandInvoker.pushCurrentCommand();
         return commandInvoker.executeCommands();
     }
@@ -93,8 +77,8 @@ public class SmartHomeController {
      */
     @GetMapping("/status")
     public LightState getLightStatus() {
-        // Set the command first, then push to Invoker and trigger execution
-        commandInvoker.setCommand(getStatusCommand);
+        // Create command via Invoker, push, and execute
+        commandInvoker.createCommand(CommandInvoker.CommandType.GET_STATUS);
         commandInvoker.pushCurrentCommand();
         return commandInvoker.executeCommands();
     }
