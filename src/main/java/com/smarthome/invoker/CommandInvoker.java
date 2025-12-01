@@ -16,14 +16,14 @@ import java.util.Queue;
  * 
  * STRICT COMMAND PATTERN IMPLEMENTATION:
  * - Maintains a Queue<Command> (FIFO) using LinkedList
- * - Allows setting a command reference via createCommand()
+ * - Allows setting a command reference via setCommand()
  * - Exposes pushCurrentCommand() to add the current command to the queue
  * - Exposes push() to directly add commands to the queue
  * - executeCommands() processes queue in FIFO order and returns last result
- * - Controller (Client) creates/pushes commands; Invoker queues and executes them
+ * - Controller (Client) sets/pushes commands; Invoker queues and executes them
  * 
  * EXECUTION FLOW:
- * Controller -> Sets Command via createCommand() -> Pushes Command via pushCurrentCommand() 
+ * Controller -> Sets Command via setCommand() -> Pushes Command via pushCurrentCommand() 
  * -> Invoker queues Command -> Controller triggers executeCommands() 
  * -> Invoker processes Queue (FIFO) -> Command calls Receiver -> Returns LightState
  */
@@ -51,21 +51,21 @@ public class CommandInvoker {
     }
 
     /**
-     * Creates (sets) the current command reference.
+     * Sets the current command reference.
      * This command can then be pushed to the queue using pushCurrentCommand().
      * 
-     * Per UML: createCommand(command: Command): void
+     * Per UML: setCommand(command: Command): void
      * 
      * @param command The command to set as the current command
      */
-    public void createCommand(Command command) {
+    public void setCommand(Command command) {
         this.command = command;
     }
 
     /**
-     * Gets the currently created command.
+     * Gets the currently set command.
      * 
-     * @return The currently created command, or null if not created
+     * @return The currently set command, or null if not set
      */
     public Command getCommand() {
         return this.command;
@@ -73,15 +73,15 @@ public class CommandInvoker {
 
     /**
      * Pushes the currently set command to the queue.
-     * The command must be created using createCommand() before calling this method.
+     * The command must be set using setCommand() before calling this method.
      * 
      * Per UML: pushCurrentCommand(): void - Adds the currently set command to the queue.
      * 
-     * @throws IllegalStateException if no command has been created
+     * @throws IllegalStateException if no command has been set
      */
     public void pushCurrentCommand() {
         if (this.command == null) {
-            throw new IllegalStateException("No command has been created. Call createCommand() first.");
+            throw new IllegalStateException("No command has been set. Call setCommand() first.");
         }
         commandQueue.add(this.command);
     }

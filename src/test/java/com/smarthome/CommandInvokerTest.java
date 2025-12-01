@@ -233,33 +233,33 @@ class CommandInvokerTest {
         assertTrue(state3.isOn());
     }
 
-    // ==================== CreateCommand Tests ====================
+    // ==================== SetCommand Tests ====================
 
     @Test
-    @DisplayName("CreateCommand with LightOnCommand should set command reference")
-    void createCommand_lightOn_shouldSetLightOnCommand() {
+    @DisplayName("SetCommand with LightOnCommand should set command reference")
+    void setCommand_lightOn_shouldSetLightOnCommand() {
         Command lightOnCommand = new LightOnCommand(lightService);
-        commandInvoker.createCommand(lightOnCommand);
+        commandInvoker.setCommand(lightOnCommand);
         
         assertNotNull(commandInvoker.getCommand());
         assertTrue(commandInvoker.getCommand() instanceof LightOnCommand);
     }
 
     @Test
-    @DisplayName("CreateCommand with LightOffCommand should set command reference")
-    void createCommand_lightOff_shouldSetLightOffCommand() {
+    @DisplayName("SetCommand with LightOffCommand should set command reference")
+    void setCommand_lightOff_shouldSetLightOffCommand() {
         Command lightOffCommand = new LightOffCommand(lightService);
-        commandInvoker.createCommand(lightOffCommand);
+        commandInvoker.setCommand(lightOffCommand);
         
         assertNotNull(commandInvoker.getCommand());
         assertTrue(commandInvoker.getCommand() instanceof LightOffCommand);
     }
 
     @Test
-    @DisplayName("CreateCommand with GetStatusCommand should set command reference")
-    void createCommand_getStatus_shouldSetGetStatusCommand() {
+    @DisplayName("SetCommand with GetStatusCommand should set command reference")
+    void setCommand_getStatus_shouldSetGetStatusCommand() {
         Command getStatusCommand = new GetStatusCommand(lightService);
-        commandInvoker.createCommand(getStatusCommand);
+        commandInvoker.setCommand(getStatusCommand);
         
         assertNotNull(commandInvoker.getCommand());
         assertTrue(commandInvoker.getCommand() instanceof GetStatusCommand);
@@ -272,10 +272,10 @@ class CommandInvokerTest {
     }
 
     @Test
-    @DisplayName("PushCurrentCommand should add created command to queue")
-    void pushCurrentCommand_shouldAddCreatedCommandToQueue() {
+    @DisplayName("PushCurrentCommand should add set command to queue")
+    void pushCurrentCommand_shouldAddSetCommandToQueue() {
         Command lightOnCommand = new LightOnCommand(lightService);
-        commandInvoker.createCommand(lightOnCommand);
+        commandInvoker.setCommand(lightOnCommand);
         
         commandInvoker.pushCurrentCommand();
         
@@ -283,16 +283,16 @@ class CommandInvokerTest {
     }
 
     @Test
-    @DisplayName("PushCurrentCommand without createCommand should throw exception")
-    void pushCurrentCommand_withoutCreateCommand_shouldThrowException() {
+    @DisplayName("PushCurrentCommand without setCommand should throw exception")
+    void pushCurrentCommand_withoutSetCommand_shouldThrowException() {
         assertThrows(IllegalStateException.class, () -> commandInvoker.pushCurrentCommand());
     }
 
     @Test
-    @DisplayName("CreateCommand then pushCurrentCommand then execute should work")
-    void createCommand_pushCurrentCommand_execute_shouldWork() {
+    @DisplayName("SetCommand then pushCurrentCommand then execute should work")
+    void setCommand_pushCurrentCommand_execute_shouldWork() {
         Command lightOnCommand = new LightOnCommand(lightService);
-        commandInvoker.createCommand(lightOnCommand);
+        commandInvoker.setCommand(lightOnCommand);
         commandInvoker.pushCurrentCommand();
         LightState result = commandInvoker.executeCommands();
         
@@ -302,14 +302,14 @@ class CommandInvokerTest {
     }
 
     @Test
-    @DisplayName("Multiple createCommand and pushCurrentCommand should work correctly")
-    void multipleCreateCommandAndPush_shouldWorkCorrectly() {
-        // Create and push ON command
-        commandInvoker.createCommand(new LightOnCommand(lightService));
+    @DisplayName("Multiple setCommand and pushCurrentCommand should work correctly")
+    void multipleSetCommandAndPush_shouldWorkCorrectly() {
+        // Set and push ON command
+        commandInvoker.setCommand(new LightOnCommand(lightService));
         commandInvoker.pushCurrentCommand();
         
-        // Create and push OFF command (overwrites the created command reference)
-        commandInvoker.createCommand(new LightOffCommand(lightService));
+        // Set and push OFF command (overwrites the set command reference)
+        commandInvoker.setCommand(new LightOffCommand(lightService));
         commandInvoker.pushCurrentCommand();
         
         // Execute both
@@ -322,29 +322,29 @@ class CommandInvokerTest {
     }
 
     @Test
-    @DisplayName("CreateCommand with commands connected to Receiver works correctly")
-    void createCommand_withReceiverConnection_createsWorkingCommands() {
+    @DisplayName("SetCommand with commands connected to Receiver works correctly")
+    void setCommand_withReceiverConnection_setsWorkingCommands() {
         // Initial state
         assertFalse(lightService.isLightOn());
         
-        // Create LIGHT_ON command and execute
-        commandInvoker.createCommand(new LightOnCommand(lightService));
+        // Set LIGHT_ON command and execute
+        commandInvoker.setCommand(new LightOnCommand(lightService));
         commandInvoker.pushCurrentCommand();
         LightState onState = commandInvoker.executeCommands();
         
         assertTrue(onState.isOn());
         assertTrue(lightService.isLightOn());
         
-        // Create LIGHT_OFF command and execute
-        commandInvoker.createCommand(new LightOffCommand(lightService));
+        // Set LIGHT_OFF command and execute
+        commandInvoker.setCommand(new LightOffCommand(lightService));
         commandInvoker.pushCurrentCommand();
         LightState offState = commandInvoker.executeCommands();
         
         assertFalse(offState.isOn());
         assertFalse(lightService.isLightOn());
         
-        // Create GET_STATUS command and execute
-        commandInvoker.createCommand(new GetStatusCommand(lightService));
+        // Set GET_STATUS command and execute
+        commandInvoker.setCommand(new GetStatusCommand(lightService));
         commandInvoker.pushCurrentCommand();
         LightState statusState = commandInvoker.executeCommands();
         
