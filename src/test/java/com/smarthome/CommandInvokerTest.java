@@ -233,7 +233,7 @@ class CommandInvokerTest {
         assertTrue(state3.isOn());
     }
 
-    // ==================== CreateCommand Tests ====================
+    // ==================== SetCommand Tests ====================
 
     @Test
     @DisplayName("SetCommand with LightOnCommand should set command reference")

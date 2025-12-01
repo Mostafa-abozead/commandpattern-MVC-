@@ -63,9 +63,9 @@ public class CommandInvoker {
     }
 
     /**
-     * Gets the currently created command.
+     * Gets the currently set command.
      * 
-     * @return The currently created command, or null if not created
+     * @return The currently set command, or null if not set
      */
     public Command getCommand() {
         return this.command;
